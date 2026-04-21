@@ -1,0 +1,6 @@
+# 強制 LF line ending — 這是跨平台 shell 專案，任何 CRLF 都會讓
+# Linux 上的 bash 回 "/bin/bash^M: bad interpreter"。
+* text=auto eol=lf
+*.sh   text eol=lf
+*.conf text eol=lf
+*.md   text eol=lf
