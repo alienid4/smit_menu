@@ -30,7 +30,8 @@ echo "[install] 複製腳本..."
 EXPECTED=(LinuxMenu.sh mod_system.sh mod_network.sh mod_file.sh mod_process.sh
           mod_user.sh mod_audit.sh mod_pkg.sh mod_storage.sh mod_java.sh
           mod_security.sh mod_others.sh mod_troubleshoot.sh mod_daily.sh
-          mod_db.sh mod_tooling.sh mod_triage.sh mod_baseline.sh)
+          mod_db.sh mod_tooling.sh mod_triage.sh mod_baseline.sh
+          mod_audit_seal.sh)
 for f in "${EXPECTED[@]}"; do
     if [ ! -f "${HERE}/${f}" ]; then
         echo "[install] 警告: 缺少 ${f}"
@@ -59,6 +60,32 @@ install_sample "db.conf.sample"       "db.conf"
 install_sample "app.conf.sample"      "app.conf"
 install_sample "baseline.conf.sample" "baseline.conf"
 
+# ============================================================================
+# T0 合規設定 — HMAC key + 每日封存 cron + append-only
+# ============================================================================
+echo "[install] T0 合規：初始化 HMAC key + cron..."
+bash "${SCRIPT_DIR}/mod_audit_seal.sh" --ensure-key || \
+    echo "[install] 警告: HMAC key 初始化失敗 (audit seal 仍可手動啟用)"
+
+# cron 設定 (若不存在才寫，避免覆蓋管理員客製)
+CRON_FILE="/etc/cron.d/linuxmenu-audit-seal"
+if [ ! -f "${CRON_FILE}" ]; then
+    cat > "${CRON_FILE}" <<EOF_CRON
+# 每日 23:59 封存今日 audit log (T0 合規)
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+59 23 * * * root  bash ${SCRIPT_DIR}/mod_audit_seal.sh --daily >> ${LOG_DIR}/audit_seal.log 2>&1
+EOF_CRON
+    chmod 644 "${CRON_FILE}"
+    echo "[install] 已建立 ${CRON_FILE}"
+else
+    echo "[install] ${CRON_FILE} 已存在，保留 (可手動檢視)"
+fi
+
+# 保護既有 audit log 為 append-only
+bash "${SCRIPT_DIR}/mod_audit_seal.sh" --protect 2>/dev/null | sed 's/^/[install] /'
+
 echo "[install] 產生 tarball ..."
 TAR="/tmp/LinuxMenu_$(date +%Y%m%d_%H%M%S).tar.gz"
 tar -czf "${TAR}" -C "$(dirname "${BASE}")" "$(basename "${BASE}")/scripts"
@@ -75,5 +102,10 @@ cat <<EOF
 ║  審計日誌: ${LOG_DIR}
 ║  巡檢報表: ${REPORT_DIR}
 ║  設定檔  : ${CONF_DIR}
+║
+║  合規 (T0):
+║    HMAC key  : ${CONF_DIR}/hmac.key  (請備份到離線安全保管!)
+║    每日封存  : /etc/cron.d/linuxmenu-audit-seal (23:59 自動)
+║    驗證指令  : bash ${SCRIPT_DIR}/mod_audit_seal.sh --verify-all
 ╚══════════════════════════════════════════════════════════════╝
 EOF

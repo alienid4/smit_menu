@@ -1,11 +1,11 @@
-# smit_menu — 金融業 Linux 維運工具 v1.0
+# smit_menu — 金融業 Linux 維運工具 v1.1
 
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![shell](https://img.shields.io/badge/shell-bash%204%2B-green.svg)]()
 [![distro](https://img.shields.io/badge/OS-RHEL%20%7C%20Rocky%20%7C%20Debian%20%7C%20Ubuntu-orange.svg)]()
 
-一套給**金融業資訊處 Linux SP** 使用的 bash 維運選單工具。單一主選單派遣 16 個模組，
-涵蓋日常巡檢、客訴急救、DB 健康檢查、工具盤點、baseline 管理。
+一套給**金融業資訊處 Linux SP** 使用的 bash 維運選單工具。單一主選單派遣 17 個模組，
+涵蓋日常巡檢、客訴急救、DB 健康檢查、工具盤點、baseline 管理、**T0 合規稽核（無 SIEM 也能過關）**。
 
 ## 設計理念
 
@@ -65,6 +65,7 @@ ${BASE}/
 | | **13** | **DB 健康檢查** | Oracle / MSSQL / MySQL / DB2 / PostgreSQL / MongoDB **自動偵測** |
 | **輔助** | 14 | 工具盤點 | 列缺哪些套件、匯 CSV 給變更申請 |
 | | **16** | **Baseline 管理** | 開盤前快照 + diff「今天 vs 平日」 |
+| | **17** | **審計封存與驗證** | **T0 合規**：append-only + HMAC，無 SIEM 也過稽核 |
 
 ## 客訴急救
 
@@ -148,6 +149,62 @@ EOF
 
 可 `grep FAIL` / `grep CANCEL` / 送 SIEM。
 
+## 合規稽核（T0 — 無 SIEM 也能過關）
+
+金管會 / FISC 稽核要的是**三要素**（而非商業 SIEM 本身）：
+
+1. ✅ **可追溯** — `audit_log` 已提供（人、時間、項目、結果、指令）
+2. ✅ **不可竄改** — 透過 **append-only + HMAC 封存** 達成
+3. ⚠️ **保留期足夠** — 由 logrotate / 中央備份配合
+
+### 選項 17 — 審計封存與驗證
+
+啟動選單 → 17，或 CLI：
+```bash
+bash ${BASE}/scripts/mod_audit_seal.sh --verify-all   # 驗證所有 log 未被動過
+bash ${BASE}/scripts/mod_audit_seal.sh --verify LinuxMenu_main_20260420.log
+bash ${BASE}/scripts/mod_audit_seal.sh --daily        # 手動 seal (平時 cron 自動跑)
+bash ${BASE}/scripts/mod_audit_seal.sh --status       # 看 key / manifest / cron 狀態
+```
+
+### 三層機制
+
+| 機制 | 實作 | 效果 |
+|---|---|---|
+| **append-only** | `chattr +a` (主檔啟動時自動) | 連 root 都不能 `rm` / `>` 覆寫 log (要先 `-a`，該動作會被偵測到) |
+| **HMAC-SHA256 封存** | 每日 23:59 cron 自動 | sha256 + HMAC 存入 manifest；任何竄改都會讓 verify 失敗 |
+| **離線 key 備份** | install 時產生 `${BASE}/conf/hmac.key` | **把 key 備份到離線安全處**，沒 key 無法偽造簽章 |
+
+### 驗證流程（給稽核看）
+
+```bash
+# 稽核員想確認 2026-04-20 的 log 從當天到現在沒被改：
+bash mod_audit_seal.sh --verify LinuxMenu_main_20260420.log
+
+── Verify: LinuxMenu_main_20260420.log ──
+ manifest sha256 : 7a3b...                  ← 當天 23:59 封存的
+ 目前    sha256  : 7a3b...                  ← 現在重算的
+ manifest hmac   : a91f...
+ 目前    hmac    : a91f...
+ 結果 : PASS — log 未被竄改               ✓
+```
+
+若任何人動過，會 FAIL：
+```
+ 結果 : FAIL — log 已被動過！
+```
+
+### 升級路線（預算允許時）
+
+| 階層 | 成本 | 技術 | 適用組織 |
+|---|---|---|---|
+| **T0 (本版本內建)** | $0 | chattr +a / HMAC / cron | 小型金融、單機應用 |
+| T1 中央化 | 1 VM | rsyslog central | 中型機構 |
+| T2 自建 SIEM | 3-5 VM | Wazuh / Graylog / Elastic | 大型機構 |
+| T3 商業 SIEM | 授權費 | Splunk / ArcSight | 金控集團 |
+
+T0 先過基本稽核，之後有預算再一步步升級，不需重寫本工具。
+
 ## 三色 wrapper
 
 | Wrapper | 標籤 | 確認 | 場景 |
@@ -214,6 +271,7 @@ sudo apt-get install -y sysstat lsof ethtool netcat-openbsd chrony iputils-arpin
 | 版本 | 日期 | 內容 |
 |---|---|---|
 | v1.0 | 2026-04-20 | 首版；16 模組；troubleshoot 9 面向 + DB 6 種 + triage + baseline + tooling |
+| **v1.1** | **2026-04-20** | **新增選項 17 審計封存與驗證**（T0 合規：append-only + HMAC + 每日 cron seal） |
 
 ## License
 

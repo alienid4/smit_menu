@@ -21,6 +21,17 @@ mkdir -p "${TWLOG_LOG}" "${TWLOG_REPORT}" "${TWLOG_SCRIPT}"
 export TODAY="$(date +%Y%m%d)"
 export LOG_FILE="${TWLOG_LOG}/LinuxMenu_main_${TODAY}.log"
 
+# T0 合規：若當日 log 尚未存在先建，並設 append-only (tamper-evident)
+# 在 xfs / 權限不足情況下靜默略過，不擋流程
+if [ ! -f "${LOG_FILE}" ]; then
+    touch "${LOG_FILE}" 2>/dev/null && chmod 640 "${LOG_FILE}" 2>/dev/null
+fi
+if command -v lsattr >/dev/null 2>&1 && [ -f "${LOG_FILE}" ]; then
+    if ! lsattr "${LOG_FILE}" 2>/dev/null | awk '{print $1}' | grep -q 'a'; then
+        chattr +a "${LOG_FILE}" 2>/dev/null || true
+    fi
+fi
+
 # --- 色碼 (v1.0 規則：紅=高風險 / 黃=變更 / 其他白) ---
 export GRN=''              # 查詢 (純白)
 export YEL=$'\033[1;33m'   # 變更
@@ -157,6 +168,7 @@ show_menu() {
     echo " 輔助"
     echo "  14) 工具盤點 (哪些套件已裝、缺哪些、給變更申請用)"
     echo "  16) Baseline 管理 (開盤前快照 + diff，抓「今天跟平日不一樣」)"
+    echo "  17) 審計封存與驗證 (T0 合規, append-only + HMAC)"
     echo "------------------------------------------------------"
     echo " q) 離開"
     echo "======================================================"
@@ -187,6 +199,7 @@ main() {
             14) call_mod "mod_tooling.sh"      ;;
             15) call_mod "mod_triage.sh"       ;;
             16) call_mod "mod_baseline.sh"     ;;
+            17) call_mod "mod_audit_seal.sh"   ;;
             q|Q)
                 audit_log "LinuxMenu" "END" "session closed"
                 echo "再見。"
