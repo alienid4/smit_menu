@@ -1,0 +1,79 @@
+#!/bin/bash
+# =============================================================================
+# install.sh - Installer for Linux SMIT 維運工具 (v1.0)
+#
+# 使用方式：
+#   1. 解壓 tarball 或直接把整個 scripts/ 目錄帶到目標機
+#   2. cd scripts && sudo bash install.sh
+#
+# 會做的事：
+#   - 建立 ${BASE}/{scripts,logs,reports,conf}  (預設 BASE=/TWLog/AI，可 env 覆蓋)
+#   - 把本目錄下的 *.sh 複製到 ${BASE}/scripts/
+#   - chmod 750
+#   - 產出 /tmp/TWLog_AI_<timestamp>.tar.gz 方便散佈
+# =============================================================================
+set -e
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE="${BASE:-/TWLog/AI}"
+SCRIPT_DIR="${BASE}/scripts"
+LOG_DIR="${BASE}/logs"
+REPORT_DIR="${BASE}/reports"
+CONF_DIR="${BASE}/conf"
+
+echo "[install] 來源目錄: ${HERE}"
+echo "[install] 建立目錄結構..."
+mkdir -p "${SCRIPT_DIR}" "${LOG_DIR}" "${REPORT_DIR}" "${CONF_DIR}"
+chmod 700 "${CONF_DIR}"
+
+echo "[install] 複製腳本..."
+EXPECTED=(LinuxMenu.sh mod_system.sh mod_network.sh mod_file.sh mod_process.sh
+          mod_user.sh mod_audit.sh mod_pkg.sh mod_storage.sh mod_java.sh
+          mod_security.sh mod_others.sh mod_troubleshoot.sh mod_daily.sh
+          mod_db.sh mod_tooling.sh mod_triage.sh mod_baseline.sh)
+for f in "${EXPECTED[@]}"; do
+    if [ ! -f "${HERE}/${f}" ]; then
+        echo "[install] 警告: 缺少 ${f}"
+        continue
+    fi
+    cp "${HERE}/${f}" "${SCRIPT_DIR}/${f}"
+    chmod 750 "${SCRIPT_DIR}/${f}"
+    echo "  → ${SCRIPT_DIR}/${f}"
+done
+
+# 設定檔範本（不覆蓋既有自訂，僅 sample 檔每次更新）
+install_sample() {
+    local sample="$1" target="$2"
+    [ -f "${HERE}/${sample}" ] || return 0
+    cp "${HERE}/${sample}" "${CONF_DIR}/${sample}"
+    chmod 600 "${CONF_DIR}/${sample}"
+    if [ ! -f "${CONF_DIR}/${target}" ]; then
+        cp "${CONF_DIR}/${sample}" "${CONF_DIR}/${target}"
+        chmod 600 "${CONF_DIR}/${target}"
+        echo "[install] 已建立 ${CONF_DIR}/${target} (從 sample 複製)"
+    else
+        echo "[install] ${CONF_DIR}/${target} 已存在，保留自訂 (sample 已更新)"
+    fi
+}
+install_sample "db.conf.sample"       "db.conf"
+install_sample "app.conf.sample"      "app.conf"
+install_sample "baseline.conf.sample" "baseline.conf"
+
+echo "[install] 產生 tarball ..."
+TAR="/tmp/LinuxMenu_$(date +%Y%m%d_%H%M%S).tar.gz"
+tar -czf "${TAR}" -C "$(dirname "${BASE}")" "$(basename "${BASE}")/scripts"
+echo "[install] 封裝完成: ${TAR}"
+
+cat <<EOF
+
+╔══════════════════════════════════════════════════════════════╗
+║  金融業 Linux 維運工具  v1.0  已安裝完成
+║
+║  啟動方式:
+║      bash ${SCRIPT_DIR}/LinuxMenu.sh
+║
+║  審計日誌: ${LOG_DIR}
+║  巡檢報表: ${REPORT_DIR}
+║  設定檔  : ${CONF_DIR}
+╚══════════════════════════════════════════════════════════════╝
+EOF

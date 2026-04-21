@@ -1,0 +1,23 @@
+# 部署時產生的資料 (不該進 repo)
+*.tar.gz
+*.zip
+/TWLog/
+logs/
+reports/
+baselines/
+
+# 每台自己的設定 (只 commit .sample，conf 本身含路徑/帳號，不推 repo)
+db.conf
+app.conf
+baseline.conf
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# 備份
+*.bak
+*~

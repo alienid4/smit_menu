@@ -1,0 +1,29 @@
+# =============================================================================
+# ${TWLOG_BASE}/conf/app.conf   — 每台 AP 主機自己一份
+# =============================================================================
+# 用途：告訴 mod_troubleshoot.sh 的「Appendix A - 應用層深度」該去看哪些 log、
+#       追哪些 Java 程序。沒有這個檔的話 Appendix A 整個跳過不出現。
+# 權限建議：chmod 600
+# =============================================================================
+
+# --- 業務 log ---
+# AP 自己的 log 路徑 (支援 glob，空白分隔)
+AP_LOG_PATHS="/opt/app/logs/*.log /var/log/tomcat/*.log"
+
+# grep 關鍵字 (regex)
+AP_LOG_ERROR_PATTERN="ERROR|Exception|FATAL|Caused by"
+
+# 看近 N 分鐘內修改過的 log 檔
+AP_LOG_WINDOW_MIN=60
+
+# --- Java 程序追蹤 ---
+# 用 pgrep 抓 PID 的 pattern；可填多個 (空白分隔)；留空則自動抓所有 java 程序
+JAVA_SVC_NAMES="tomcat"
+# 或者直接指定 PID (若你已知)：JAVA_PIDS="12345 67890"
+
+# GC pause 判定 (毫秒)
+JAVA_GC_PAUSE_WARN_MS=500
+JAVA_GC_PAUSE_FAIL_MS=2000
+
+# Thread pool: BLOCKED 比例 > 此門檻視為 WARN (百分比)
+JAVA_THREAD_BLOCKED_WARN_PCT=10
