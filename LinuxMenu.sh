@@ -1,13 +1,15 @@
 #!/bin/bash
 ###############################################################################
 # Script Name: LinuxMenu.sh
-# Version: v1.2
+# Version: v1.3
 # Last Update: 2026-04-22
 # Description: 金融業 Linux 維運工具 主選單 (Main Controller)
 # Style     : 雙線邊框、call_mod 派遣、CASLOG 環境變數
-# Scope v1.2: 三色 wrapper、audit log、跨 distro (RHEL/Debian)、17 個子模組
-#             + T0 合規 (append-only + HMAC) + baseline + triage + tooling
-#             預設根路徑 /CASLog/AI (可由 CASLOG_BASE env 覆蓋)
+# Scope v1.3: + run_impact_cmd 雙重確認 (CONFIRM + 打主機名, 10 秒 timeout)
+#             + distro 細版本偵測 (/etc/os-release, RHEL 7/8/9, Ubuntu, Debian, Rocky, Alma...)
+#             + 依版本自動切 PKG (yum/dnf) 與 FAILLOCK (pam_tally2/faillock)
+# Scope v1.2: 預設根路徑 /CASLog/AI (可由 CASLOG_BASE env 覆蓋)
+# Scope v1.0: 三色 wrapper、audit log、17 個子模組、T0 合規、baseline、triage、tooling
 ###############################################################################
 
 # --- 環境變數 ---
@@ -41,30 +43,89 @@ export CYN=''              # 資訊 (純白)
 export RST=$'\033[0m'
 export NC="${RST}"         # 相容 v1.4
 
-# --- Distro 偵測 ---
+# --- Distro 偵測 (v1.3 強化: /etc/os-release + 細版本) ---
+# 產出變數：
+#   DISTRO_FAMILY   = rhel / debian / unknown    (舊 code 用 ${DISTRO} 相容，等同 FAMILY)
+#   DISTRO_ID       = rhel / centos / rocky / almalinux / fedora / ol / debian / ubuntu / ...
+#   DISTRO_VERSION  = 9.7 / 22.04 / 12
+#   DISTRO_VERSION_MAJOR = 9 / 22 / 12
+#   DISTRO_PRETTY   = "Rocky Linux 9.7 (Blue Onyx)" 之類的顯示字串
 distro_detect() {
-    if   [ -f /etc/redhat-release ]; then DISTRO=rhel
-    elif [ -f /etc/debian_version ]; then DISTRO=debian
-    else DISTRO=unknown; fi
-    case "${DISTRO}" in
+    local ID="" VERSION_ID="" PRETTY_NAME="" ID_LIKE=""
+    if [ -r /etc/os-release ]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+        DISTRO_ID="${ID:-unknown}"
+        DISTRO_VERSION="${VERSION_ID:-0}"
+        DISTRO_PRETTY="${PRETTY_NAME:-${DISTRO_ID} ${DISTRO_VERSION}}"
+    elif [ -f /etc/redhat-release ]; then
+        DISTRO_ID="rhel"
+        DISTRO_VERSION=$(grep -oE '[0-9]+\.[0-9]+' /etc/redhat-release | head -1)
+        DISTRO_VERSION="${DISTRO_VERSION:-0}"
+        DISTRO_PRETTY=$(head -1 /etc/redhat-release)
+    elif [ -f /etc/debian_version ]; then
+        DISTRO_ID="debian"
+        DISTRO_VERSION=$(cat /etc/debian_version)
+        DISTRO_PRETTY="Debian ${DISTRO_VERSION}"
+    else
+        DISTRO_ID="unknown"; DISTRO_VERSION="0"; DISTRO_PRETTY="unknown"
+    fi
+    DISTRO_VERSION_MAJOR="${DISTRO_VERSION%%.*}"
+    # 預防 VERSION_ID 格式異常
+    case "${DISTRO_VERSION_MAJOR}" in ''|*[!0-9]*) DISTRO_VERSION_MAJOR=0 ;; esac
+
+    # 判斷家族 (用 ID 或 ID_LIKE)
+    case "${DISTRO_ID}" in
+        rhel|centos|rocky|almalinux|fedora|ol|amzn|oracle)
+            DISTRO_FAMILY=rhel ;;
+        debian|ubuntu|linuxmint|raspbian|pop|kali)
+            DISTRO_FAMILY=debian ;;
+        *)
+            if echo " ${ID_LIKE} " | grep -qE ' (rhel|fedora|centos) '; then
+                DISTRO_FAMILY=rhel
+            elif echo " ${ID_LIKE} " | grep -qE ' debian '; then
+                DISTRO_FAMILY=debian
+            else
+                DISTRO_FAMILY=unknown
+            fi ;;
+    esac
+
+    # 依家族 + 細版本決定預設工具
+    case "${DISTRO_FAMILY}" in
         rhel)
-            PKG=yum;           PKG_UPDATE="yum check-update"
+            # RHEL 8+ 預設 dnf (yum 是 alias)；RHEL 7/CentOS 7 只有 yum
+            if [ "${DISTRO_VERSION_MAJOR}" -ge 8 ] 2>/dev/null; then
+                PKG=dnf; PKG_UPDATE="dnf check-update"
+            else
+                PKG=yum; PKG_UPDATE="yum check-update"
+            fi
             AUTHLOG=/var/log/secure
             SYSLOG=/var/log/messages
-            SSHD_SVC=sshd;     FW=firewall-cmd
-            FAILLOCK=faillock; SECMOD=sestatus
+            SSHD_SVC=sshd; FW=firewall-cmd
+            # RHEL 8+ 用 faillock，RHEL 7 用 pam_tally2
+            if [ "${DISTRO_VERSION_MAJOR}" -ge 8 ] 2>/dev/null; then
+                FAILLOCK=faillock
+            else
+                FAILLOCK=pam_tally2
+            fi
+            SECMOD=sestatus
             ;;
         debian)
-            PKG=apt;           PKG_UPDATE="apt list --upgradable"
+            PKG=apt; PKG_UPDATE="apt list --upgradable"
             AUTHLOG=/var/log/auth.log
             SYSLOG=/var/log/syslog
-            SSHD_SVC=ssh;      FW=ufw
-            FAILLOCK=pam_tally2; SECMOD=aa-status
+            SSHD_SVC=ssh; FW=ufw
+            FAILLOCK=pam_tally2
+            SECMOD=aa-status
             ;;
         *)  PKG=""; PKG_UPDATE=""; AUTHLOG=""; SYSLOG=""
             SSHD_SVC=""; FW=""; FAILLOCK=""; SECMOD="" ;;
     esac
-    export DISTRO PKG PKG_UPDATE AUTHLOG SYSLOG SSHD_SVC FW FAILLOCK SECMOD
+
+    # 舊 code 相容：DISTRO 就是 FAMILY
+    DISTRO="${DISTRO_FAMILY}"
+    export DISTRO DISTRO_FAMILY DISTRO_ID DISTRO_VERSION DISTRO_VERSION_MAJOR DISTRO_PRETTY
+    export PKG PKG_UPDATE AUTHLOG SYSLOG SSHD_SVC FW FAILLOCK SECMOD
 }
 distro_detect
 
@@ -101,18 +162,53 @@ run_change_cmd() {
     return $rc
 }
 
-# 紅：高衝擊 (需輸入 CONFIRM)
+# 紅：高衝擊 (雙重確認 — 金融業標準防誤觸)
+#   1. 輸入 CONFIRM
+#   2. 輸入主機名稱 (10 秒 timeout)，防「登錯機敲錯命令」
 run_impact_cmd() {
     local desc="$1"; shift
     echo -e "${RED}[IMPACT]${RST} ${desc}"
     echo -e "\$ $*"
+
+    # ---- 第 1 次確認 ----
+    echo -e "${RED}── 第 1 次確認 ──${RST}"
     echo -e "${RED}此操作具有高度影響，請輸入 CONFIRM 以繼續：${RST}"
-    read -r typed
-    if [ "${typed}" != "CONFIRM" ]; then
-        echo -e "${YEL}已取消。${RST}"
-        audit_log "${desc}" "CANCEL" "user declined"
+    local t1
+    if ! read -r t1; then
+        echo -e "${YEL}已取消 (stdin EOF)${RST}"
+        audit_log "${desc}" "CANCEL" "1st-confirm EOF"
         return 1
     fi
+    if [ "${t1}" != "CONFIRM" ]; then
+        echo -e "${YEL}已取消 (第 1 次確認未通過)${RST}"
+        audit_log "${desc}" "CANCEL" "1st-confirm fail: ${t1}"
+        return 1
+    fi
+
+    # ---- 第 2 次確認：打主機名 (防登錯機) ----
+    local host; host=$(hostname)
+    echo
+    echo -e "${RED}── 第 2 次確認 (10 秒內)${RST}"
+    echo -e "  主機   : ${host}"
+    echo -e "  使用者 : $(whoami)"
+    echo -e "  時間   : $(date '+%Y-%m-%d %H:%M:%S')"
+    echo -e "  指令   : $*"
+    echo -e "${RED}請輸入主機名稱 [${host}] 以完成二次確認：${RST}"
+    local t2
+    if ! read -r -t 10 t2; then
+        echo
+        echo -e "${YEL}已取消 (10 秒逾時)${RST}"
+        audit_log "${desc}" "CANCEL" "2nd-confirm timeout"
+        return 1
+    fi
+    if [ "${t2}" != "${host}" ]; then
+        echo -e "${YEL}已取消 (主機名稱不符：'${t2}' != '${host}')${RST}"
+        audit_log "${desc}" "CANCEL" "2nd-confirm mismatch: '${t2}' vs '${host}'"
+        return 1
+    fi
+
+    # ---- 執行 ----
+    echo -e "${RED}雙重確認通過，執行中...${RST}"
     "$@"
     local rc=$?
     audit_log "${desc}" "$([ $rc -eq 0 ] && echo OK || echo FAIL)" "$*"
@@ -146,9 +242,10 @@ show_menu() {
     local distro_tag="${DISTRO}"
     [ "${DISTRO}" = "unknown" ] && distro_tag="${RED}unknown${RST}"
     echo "======================================================"
-    echo " 金融業 Linux 維運工具  [Version: v1.2]"
+    echo " 金融業 Linux 維運工具  [Version: v1.3]"
     echo " 主機: $(hostname)   使用者: $(whoami)"
-    echo -e " OS: ${distro_tag}   時間: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo -e " OS: ${DISTRO_PRETTY} (${distro_tag} family)"
+    echo "    時間: $(date '+%Y-%m-%d %H:%M:%S')   PKG: ${PKG}   FW: ${FW}   FAILLOCK: ${FAILLOCK}"
     echo "======================================================"
     echo " 查詢類"
     echo "   1) 系統資訊            2) 網路診斷"
