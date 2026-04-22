@@ -19,9 +19,8 @@ menu() {
     echo "  7) 近 7 日新增 / 變更的帳號"
     echo "  8) sudo 規則清單"
     echo "  9) SSH authorized_keys 稽核 (每個可登入帳號)"
-    echo -e " 10) ${YEL}[變更] 解鎖帳號 (passwd -u)${RST}"
-    echo -e " 11) ${YEL}[變更] 重設失敗計數${RST}"
     echo "  b) 返回主選單"
+    echo "  (lite 版已移除解鎖/重設失敗計數等變更類操作)"
     echo "======================================================"
 }
 
@@ -128,10 +127,6 @@ while true; do
         7)  run_cmd "Recent account changes" recent_accounts ;;
         8)  run_cmd "Sudo rules"         sudo_rules ;;
         9)  run_cmd "authorized_keys audit" authkey_audit ;;
-        10) read -r -p "要解鎖之帳號 > " u
-            run_change_cmd "Unlock ${u}"  passwd -u "${u}" ;;
-        11) read -r -p "要重設之帳號 > " u
-            run_change_cmd "Reset fail count ${u}" reset_fail_counter "${u}" ;;
         b|B) exit 0 ;;
         *)   echo "無效選項" ;;
     esac

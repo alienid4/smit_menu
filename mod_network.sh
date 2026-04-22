@@ -177,7 +177,7 @@ menu() {
     echo "  6) DNS 解析器設定"
     echo "  7) ARP 快取表"
     echo "  8) iptables / nftables 規則"
-    echo -e "  9) ${YEL}[變更] 防火牆管理 (列出/新增/刪除/reload)${RST}"
+    echo "  9) 防火牆現況 (ports/services/zones — 只讀)"
     echo "  b) 返回主選單"
     echo "======================================================"
 }
@@ -195,7 +195,7 @@ while true; do
         6) run_cmd "DNS resolver"    dns_info ;;
         7) run_cmd "ARP cache"       ip neigh ;;
         8) run_cmd "Firewall rules"  fw_rules ;;
-        9) firewall_menu; continue ;;   # 進子選單，返回後不需要再 pause
+        9) run_cmd "Firewall list (read-only)" fw_list ;;
         b|B) exit 0 ;;
         *)   echo "無效選項" ;;
     esac

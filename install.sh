@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# install.sh - Installer for Linux SMIT 維運工具 (v1.3)
+# install.sh - Installer for Linux SMIT 系統觀察工具 (lite-v0.1)
 #
 # 使用方式：
 #   1. 解壓 tarball 或直接把整個 scripts/ 目錄帶到目標機
@@ -28,10 +28,11 @@ chmod 700 "${CONF_DIR}"
 
 echo "[install] 複製腳本..."
 EXPECTED=(LinuxMenu.sh mod_system.sh mod_network.sh mod_file.sh mod_process.sh
-          mod_user.sh mod_audit.sh mod_pkg.sh mod_storage.sh mod_java.sh
+          mod_user.sh mod_audit.sh mod_pkg.sh mod_storage.sh mod_cert.sh
           mod_security.sh mod_others.sh mod_troubleshoot.sh mod_daily.sh
-          mod_db.sh mod_tooling.sh mod_triage.sh mod_baseline.sh
+          mod_tooling.sh mod_triage.sh mod_baseline.sh
           mod_audit_seal.sh)
+# lite 版已移除: mod_java.sh (改 mod_cert.sh), mod_db.sh
 for f in "${EXPECTED[@]}"; do
     if [ ! -f "${HERE}/${f}" ]; then
         echo "[install] 警告: 缺少 ${f}"
@@ -56,8 +57,7 @@ install_sample() {
         echo "[install] ${CONF_DIR}/${target} 已存在，保留自訂 (sample 已更新)"
     fi
 }
-install_sample "db.conf.sample"       "db.conf"
-install_sample "app.conf.sample"      "app.conf"
+# lite 版無 db.conf / app.conf (DB 與 AP 功能已移除)
 install_sample "baseline.conf.sample" "baseline.conf"
 
 # ============================================================================
@@ -94,7 +94,7 @@ echo "[install] 封裝完成: ${TAR}"
 cat <<EOF
 
 ╔══════════════════════════════════════════════════════════════╗
-║  金融業 Linux 維運工具  v1.3  已安裝完成
+║  金融業 Linux 系統觀察工具  lite-v0.1  已安裝完成 (純觀察版)
 ║
 ║  啟動方式:
 ║      bash ${SCRIPT_DIR}/LinuxMenu.sh

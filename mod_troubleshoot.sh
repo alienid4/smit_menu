@@ -1,21 +1,16 @@
 #!/bin/bash
-# mod_troubleshoot.sh - 客戶投訴「慢/連不進去」時的自辯報告 (v1.2)
-# 9 個面向 + 應用層附錄，每項以「檢查範圍/指令/基準/實測/判定/對客訴影響/建議」呈現
-#   1) 效能        2) 頻寬 (含 conntrack/TW/SYN drop)   3) AP port
-#   4) Session     5) Storage                         6) 時間/憑證
-#   7) DB          8) Infra 穩定 (OOM/MCE/failed)     9) 運維軌跡 (近 1h)
-#   Appendix A (選配): 應用層深度 — 需 conf/app.conf
+# mod_troubleshoot.sh - (lite) 純系統自辯報告
+# 7 個面向，每項以「檢查範圍/指令/基準/實測/判定/對客訴影響/建議」呈現
+#   1) 效能   2) 頻寬 (含 conntrack/TW/SYN drop)
+#   3) Session (原 4)   4) Storage (原 5)   5) 時間/憑證 (原 6)
+#   6) Infra 穩定 (原 8)   7) 運維軌跡 (原 9)
+# 相對 full 版移除：3) AP port、7) DB、Appendix A 應用層深度
 _HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_HERE}/LinuxMenu.sh" 2>/dev/null
 : "${YEL:=\033[1;33m}"; : "${RED:=\033[0;31m}"; : "${RST:=\033[0m}"
 
-# 嘗試載入 DB 模組（給第 7 塊用）
-DB_MOD="${CASLOG_SCRIPT}/mod_db.sh"
-[ -f "${DB_MOD}" ] && . "${DB_MOD}"
-
-# 選配 app.conf (Appendix A)
-APP_CONF="${CASLOG_CONF}/app.conf"
-[ -f "${APP_CONF}" ] && . "${APP_CONF}"
+# lite 版無 DB 模組，不 source
+# lite 版無 app.conf (Appendix A 已移除)
 
 REPORT_DIR="${CASLOG_REPORT}"
 TS="$(date '+%Y%m%d_%H%M%S')"
@@ -36,16 +31,13 @@ else
 fi
 
 if [ "${TS_NONINTERACTIVE:-0}" = "1" ]; then
-    AP_PORT="${TS_AP_PORT:-8080}"
     PING_TGT="${TS_PING_TGT:-}"
 else
     clear
     echo "======================================================"
-    echo " 快速自辯報告 (Troubleshoot) v1.2"
-    echo " 客訴「系統慢 / 連不進去」時執行，涵蓋 9 面向 + Appendix A (選配)"
+    echo " 快速自辯報告 (lite) - 純系統觀察"
+    echo " 7 面向：效能 / 頻寬 / Session / Storage / 時間憑證 / Infra / 運維軌跡"
     echo "======================================================"
-    read -r -p "要檢查的 AP 監聽 port [8080] > " AP_PORT
-    AP_PORT="${AP_PORT:-8080}"
     read -r -p "Ping 測試目標 IP/hostname [自動抓 gateway] > " PING_TGT
 fi
 if [ -z "${PING_TGT}" ]; then
@@ -71,25 +63,18 @@ header() {
         echo " 主機      : ${HOST}"
         echo " 操作者    : $(whoami)"
         echo " 產出時間  : $(date '+%Y-%m-%d %H:%M:%S')"
-        echo " OS        : ${DISTRO}     Uptime: ${uptime_str}"
-        echo " AP port   : ${AP_PORT}    Ping 目標: ${PING_TGT}"
+        echo " OS        : ${DISTRO_PRETTY:-${DISTRO}}   Uptime: ${uptime_str}"
+        echo " Ping 目標: ${PING_TGT}"
         echo "============================================================"
         echo
-        echo "本報告 9 個面向："
+        echo "本報告 7 個面向 (lite: 去 AP/DB)："
         echo "  1) 效能 (CPU/記憶體/Load/Swap)"
         echo "  2) 頻寬 (網卡/TCP retrans/Ping/conntrack/TIME_WAIT/SYN drop)"
-        echo "  3) AP  (指定 port 監聽狀態與程序資源)"
-        echo "  4) Session (連線總數與狀態分佈)"
-        echo "  5) Storage (磁碟/Inode/tmp)"
-        echo "  6) 時間 / 憑證 (NTP / keystore 到期)"
-        echo "  7) DB  (偵測到的 DB 做連通性與健康檢查)"
-        echo "  8) Infra 穩定 (OOM/MCE/systemd failed/kernel tainted)"
-        echo "  9) 運維軌跡 (近 1h 誰登入 / 改 /etc / 重啟 service)"
-        if [ -f "${APP_CONF}" ]; then
-            echo "  +) Appendix A 應用層深度 (app.conf 已載入)"
-        else
-            echo "  +) Appendix A 應用層深度 — 不執行 (app.conf 不存在)"
-        fi
+        echo "  3) Session (連線總數與狀態分佈)"
+        echo "  4) Storage (磁碟/Inode/tmp)"
+        echo "  5) 時間 / 憑證 (NTP / keystore 到期)"
+        echo "  6) Infra 穩定 (OOM/MCE/systemd failed/kernel tainted)"
+        echo "  7) 運維軌跡 (近 1h 誰登入 / 改 /etc / 重啟 service)"
         echo
     } | tee -a "${SUMMARY}" >> "${DETAIL}"
 }
@@ -99,7 +84,7 @@ d_run() { local t="$1"; shift; d_sec "${t}"; "$@" >> "${DETAIL}" 2>&1; }
 
 # 主角：s_block — 一個 check 的完整呈現
 # 用法：
-#   s_block "1/9" "效能" "PASS" <<EOF
+#   s_block "1/7" "效能" "PASS" <<EOF
 #   檢查範圍   : ...
 #   檢查指令   : ...
 #   ...
@@ -160,7 +145,7 @@ check_load() {
         FAIL) impact="高度 — 主機資源耗盡，AP 必定卡頓或 hang，為客訴主因" ;;
     esac
 
-    s_block "1/9" "效能" "${result}" <<EOF
+    s_block "1/7" "效能" "${result}" <<EOF
   檢查範圍   : CPU load、CPU idle%、Swap 使用率、可用記憶體
   檢查指令   : cat /proc/loadavg ; vmstat 1 3 ; free -h ; top -bn1 ; iostat -x 1 3
   正常基準   : Load(1m)  < cores × 2           (此機 cores=${cores}，WARN>=${load_warn}，FAIL>=${load_fail})
@@ -275,7 +260,7 @@ check_net() {
         FAIL) impact="高度 — Ping 失敗、retrans 過高、conntrack 溢出或 TIME_WAIT 耗盡；主機網路層已無法承接新連線，客訴「連不進去」直接相關" ;;
     esac
 
-    s_block "2/9" "頻寬" "${result}" <<EOF
+    s_block "2/7" "頻寬" "${result}" <<EOF
   檢查範圍   : NIC 錯誤/dropped、TCP retransmit、Ping 延遲、**conntrack 用量**、
                **TIME_WAIT 佔 port range 比例**、**SYN / listen drops** (金融業高併發關鍵)
   檢查指令   : cat /sys/class/net/*/statistics/{rx,tx}_{errors,dropped}
@@ -392,7 +377,7 @@ check_session() {
         FAIL) impact="高度 — CLOSE_WAIT 累積嚴重，AP 遲早會因 FD 耗盡或連線上限被擋，客訴「慢/連不進去」高度相關" ;;
     esac
 
-    s_block "4/9" "Session" "${result}" <<EOF
+    s_block "3/7" "Session" "${result}" <<EOF
   檢查範圍   : TCP 連線各狀態數量、連線來源 IP 分布
   檢查指令   : ss -tn state established | wc -l
                ss -tn state close-wait  | wc -l
@@ -443,7 +428,7 @@ check_storage() {
         FAIL) impact="高度 — 有 FS 超過 95% 或 /tmp 超過 90%，寫入已開始或即將失敗，AP 會出錯" ;;
     esac
 
-    s_block "5/9" "Storage" "${result}" <<EOF
+    s_block "4/7" "Storage" "${result}" <<EOF
   檢查範圍   : 所有檔案系統使用率、inode 使用率、/tmp 狀態
   檢查指令   : df -hP
                df -i
@@ -509,7 +494,7 @@ check_time_cert() {
         FAIL) impact="高度 — 已有憑證過期，相依服務 SSL handshake 會失敗；若為 API gateway 憑證則客戶端直接 TLS 錯誤" ;;
     esac
 
-    s_block "6/9" "時間/憑證" "${result}" <<EOF
+    s_block "5/7" "時間/憑證" "${result}" <<EOF
   檢查範圍   : NTP 同步狀態與偏差、系統預設 Java keystore 內憑證到期
   檢查指令   : timedatectl ; chronyc tracking ; ntpq -p
                keytool -list -v -keystore ${defks}
@@ -635,7 +620,7 @@ check_infra() {
         FAIL) impact="高度 — OOM 頻繁或有 service failed，主機已不穩定，客訴與此高度相關" ;;
     esac
 
-    s_block "8/9" "Infra 穩定" "${result}" <<EOF
+    s_block "6/7" "Infra 穩定" "${result}" <<EOF
   檢查範圍   : OOM kill 歷史 / MCE / ECC / systemd failed units / kernel tainted
   檢查指令   : journalctl -k --since '24 hour ago' | grep -i 'killed process'
                dmesg -T | grep -iE 'mce|hardware error|edac'
@@ -694,7 +679,7 @@ check_ops_trail() {
         impact="低 — 近 1h 僅有零星或無維運動作，客訴非運維誤動作引起"
     fi
 
-    s_block "9/9" "運維軌跡" "${result}" <<EOF
+    s_block "7/7" "運維軌跡" "${result}" <<EOF
   檢查範圍   : 近 1 小時內本機發生的運維動作 (登入/改檔/重啟服務)
   目的       : 金融業 SP 被問「你剛剛是不是動過什麼」時能秒回答
   檢查指令   : last -s "1 hour ago"
@@ -800,19 +785,16 @@ appendix_a() {
 # Main
 # =============================================================================
 header
-echo "-- 開始檢查 (9 個面向) --"
+echo "-- 開始檢查 (lite 7 面向) --"
 echo
 
 check_load
 check_net
-check_ap
 check_session
 check_storage
 check_time_cert
-check_db
 check_infra
 check_ops_trail
-appendix_a
 
 # 總結統計
 pass=0; warn=0; fail=0
@@ -829,7 +811,7 @@ done
     echo "============================================================"
     echo " 報告結論"
     echo "============================================================"
-    echo " 9 項檢查: PASS=${pass}  WARN=${warn}  FAIL=${fail}"
+    echo " 7 項檢查: PASS=${pass}  WARN=${warn}  FAIL=${fail}"
     echo
     if [ "${fail}" -gt 0 ]; then
         echo " 主機狀態: ${RED:-}異常 (${fail} 項 FAIL)${RST:-}"
@@ -840,7 +822,7 @@ done
         echo " 判讀    : 本主機尚可運作，警訊可能是客訴的間接原因，"
         echo "           建議排查；若客訴時段與警訊累積吻合則優先處理。"
     else
-        echo " 主機狀態: 正常 (9/9 PASS)"
+        echo " 主機狀態: 正常 (7/7 PASS)"
         echo " 判讀    : 本主機通過所有自辯檢查，問題極可能不在此主機。"
         echo "           下一步建議排查：客戶端網路、上游防火牆 / F5 / LB、"
         echo "                         應用層邏輯 (AP 業務日誌)、DB 端"

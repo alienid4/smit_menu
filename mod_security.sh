@@ -85,9 +85,8 @@ menu() {
     echo "  7) auditctl 規則"
     echo "  8) PAM 稽核 (密碼策略 / 鎖定)"
     echo "  9) bash_history 權限檢查"
-    echo -e " 10) ${RED}[高風險] 重啟 ${SSHD_SVC} (會中斷連線)${RST}"
-    echo -e " 11) ${RED}[高風險] 切斷指定 SSH PTS${RST}"
     echo "  b) 返回主選單"
+    echo "  (lite 版已移除重啟 sshd / Kick PTS 等高風險操作)"
     echo "======================================================"
 }
 
@@ -105,9 +104,7 @@ while true; do
         7) run_cmd "auditctl rules"   auditctl_rules ;;
         8) run_cmd "PAM audit"        pam_audit ;;
         9) run_cmd "bash_history check" bash_history_check ;;
-        10) run_impact_cmd "Restart ${SSHD_SVC}" systemctl restart "${SSHD_SVC}" ;;
-        11) read -r -p "pts (e.g. pts/2) > " t
-            run_impact_cmd "Kick ${t}" pkill -KILL -t "${t}" ;;
+        # 10/11) 高風險操作 — lite 版已移除
         b|B) exit 0 ;;
         *)   echo "無效選項" ;;
     esac

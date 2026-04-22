@@ -1,14 +1,13 @@
 # =============================================================================
 # ${CASLOG_CONF}/baseline.conf    每台主機自己一份
 # =============================================================================
-# 用途：mod_baseline.sh 產 baseline 時 (cron 07:30) 用哪個 AP port / ping 目標。
+# 用途：mod_baseline.sh 產 baseline 時 (cron 07:30) 用哪個 ping 目標。
 # =============================================================================
-
-# AP 監聽 port (非互動跑 troubleshoot 時使用)
-BL_AP_PORT=8080
 
 # Ping 測試目標 IP/hostname；空白則自動抓 default gateway
 BL_PING_TGT=""
 
 # baseline 保留天數，超過自動清 (由 snapshot 自動執行)
 BL_RETAIN_DAYS=30
+
+# (lite 版已移除 BL_AP_PORT — troubleshoot 不再檢查 AP port)

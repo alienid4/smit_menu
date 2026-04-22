@@ -15,8 +15,8 @@ menu() {
     echo "  4) 開啟檔案描述子最多的 10 個進程"
     echo "  5) 可疑進程 (無 tty / 無父進程)"
     echo "  6) Process tree (pstree)"
-    echo -e "  7) ${RED}[高風險] Kill 指定 PID (SIGKILL)${RST}"
     echo "  b) 返回主選單"
+    echo "  (lite 版已移除 Kill 等變更類操作)"
     echo "======================================================"
 }
 
@@ -67,8 +67,6 @@ while true; do
         4) run_cmd "Top FD usage"    top_fd ;;
         5) run_cmd "Suspicious procs" suspicious_procs ;;
         6) run_cmd "Process tree"    ptree ;;
-        7) read -r -p "PID > " pid
-           run_impact_cmd "Kill PID ${pid}" kill -9 "${pid}" ;;
         b|B) exit 0 ;;
         *)   echo "無效選項" ;;
     esac

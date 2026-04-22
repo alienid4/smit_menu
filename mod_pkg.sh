@@ -17,8 +17,8 @@ menu() {
     echo "  5) 查詢特定套件"
     echo "  6) ${PKG} 歷史 (最近 10 次)"
     echo "  7) 已匯入 GPG key 清單"
-    echo -e "  8) ${YEL}[變更] 重建套件庫 cache${RST}"
     echo "  b) 返回主選單"
+    echo "  (lite 版已移除 ${PKG} makecache 等變更類操作)"
     echo "======================================================"
 }
 
@@ -102,7 +102,7 @@ while true; do
            run_cmd "Query ${p}"        query_pkg "${p}" ;;
         6) run_cmd "Package history"   pkg_history ;;
         7) run_cmd "GPG keys"          gpg_keys ;;
-        8) run_change_cmd "Rebuild package cache" rebuild_cache ;;
+        # 8) 重建 cache — lite 版已移除
         b|B) exit 0 ;;
         *)   echo "無效選項" ;;
     esac

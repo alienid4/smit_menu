@@ -1,15 +1,16 @@
 #!/bin/bash
 ###############################################################################
 # Script Name: LinuxMenu.sh
-# Version: v1.3
+# Version: lite-v0.1 (simplified from main v1.3)
 # Last Update: 2026-04-22
-# Description: 金融業 Linux 維運工具 主選單 (Main Controller)
+# Description: 金融業 Linux 系統觀察工具 (Lite — 純觀察、無 DB、無 AP)
 # Style     : 雙線邊框、call_mod 派遣、CASLOG 環境變數
-# Scope v1.3: + run_impact_cmd 雙重確認 (CONFIRM + 打主機名, 10 秒 timeout)
-#             + distro 細版本偵測 (/etc/os-release, RHEL 7/8/9, Ubuntu, Debian, Rocky, Alma...)
-#             + 依版本自動切 PKG (yum/dnf) 與 FAILLOCK (pam_tally2/faillock)
-# Scope v1.2: 預設根路徑 /CASLog/AI (可由 CASLOG_BASE env 覆蓋)
-# Scope v1.0: 三色 wrapper、audit log、17 個子模組、T0 合規、baseline、triage、tooling
+# Scope lite-v0.1:
+#   [保留] 13 個系統觀察模組 + 雙重確認 wrapper + distro 細版本偵測
+#   [移除] DB 健康檢查 (整包砍 mod_db)；AP 相關 (troubleshoot AP 塊, triage A/B/C)
+#   [簡化] 變更/高風險子選項 (本版完全不呼叫 run_change_cmd / run_impact_cmd)
+#   [改名] mod_java → mod_cert (只保留憑證掃描)
+# 適用：純觀察主機、稽核主機、DMZ、合規機 — 所有變更透過 Ansible 從外部下發
 ###############################################################################
 
 # --- 環境變數 ---
@@ -242,30 +243,26 @@ show_menu() {
     local distro_tag="${DISTRO}"
     [ "${DISTRO}" = "unknown" ] && distro_tag="${RED}unknown${RST}"
     echo "======================================================"
-    echo " 金融業 Linux 維運工具  [Version: v1.3]"
+    echo " 金融業 Linux 系統觀察工具  [Lite v0.1] (純觀察版)"
     echo " 主機: $(hostname)   使用者: $(whoami)"
     echo -e " OS: ${DISTRO_PRETTY} (${distro_tag} family)"
     echo "    時間: $(date '+%Y-%m-%d %H:%M:%S')   PKG: ${PKG}   FW: ${FW}   FAILLOCK: ${FAILLOCK}"
     echo "======================================================"
-    echo " 查詢類"
-    echo "   1) 系統資訊            2) 網路診斷"
+    echo " 系統觀察"
+    echo "   1) 系統資訊            2) 網路狀態"
     echo "   3) 檔案 & 目錄         4) 程序監控"
-    echo "   6) 日誌 & 稽核         7) 套件 / Repo"
-    echo "   8) 儲存 & 備份"
+    echo "   5) 帳號狀態            6) 日誌 & 稽核"
+    echo "   7) 套件清單            8) 儲存狀態"
+    echo "   9) 憑證掃描           10) 安全稽核狀態"
     echo "------------------------------------------------------"
-    echo -e " 變更類 (${YEL}黃=變更${RST} / ${RED}紅=高風險${RST})"
-    echo -e "   5) ${YEL}帳號 & 權限${RST}         9) ${RED}Java & 憑證 (Impact)${RST}"
-    echo -e "  10) ${RED}安全稽核 (Impact)${RST}"
-    echo "------------------------------------------------------"
-    echo " 報表 / 急救"
-    echo "  11) 快速自辯 (Troubleshoot) — 非尖峰時段、客訴「慢/連不進去」"
-    echo "  15) 快速 Triage (<1 秒) — 交易期間 / 系統 freeze 時"
+    echo " 急救 / 報表"
+    echo "  11) 快速自辯 (7 面向, 去 AP/DB) — 非尖峰時段"
+    echo "  15) 快速 Triage (3 項系統指標, <1 秒) — 交易期間"
     echo "  12) 每日巡檢報表產生器"
-    echo "  13) DB 健康檢查 (Oracle/MSSQL/MySQL/DB2/PG/Mongo)"
     echo "------------------------------------------------------"
     echo " 輔助"
-    echo "  14) 工具盤點 (哪些套件已裝、缺哪些、給變更申請用)"
-    echo "  16) Baseline 管理 (開盤前快照 + diff，抓「今天跟平日不一樣」)"
+    echo "  14) 工具盤點"
+    echo "  16) Baseline 管理 (開盤前快照 + diff)"
     echo "  17) 審計封存與驗證 (T0 合規, append-only + HMAC)"
     echo "------------------------------------------------------"
     echo " q) 離開"
@@ -289,13 +286,13 @@ main() {
             6)  call_mod "mod_audit.sh"    ;;
             7)  call_mod "mod_pkg.sh"      ;;
             8)  call_mod "mod_storage.sh"  ;;
-            9)  call_mod "mod_java.sh"     ;;
+            9)  call_mod "mod_cert.sh"        ;;  # lite: 憑證掃描 (原 mod_java)
             10) call_mod "mod_security.sh"    ;;
-            11) call_mod "mod_troubleshoot.sh" ;;
+            11) call_mod "mod_troubleshoot.sh" ;;  # lite: 7 面向 (去 AP/DB)
             12) call_mod "mod_daily.sh"       ;;
-            13) call_mod "mod_db.sh"           ;;
+            # 13) mod_db.sh — lite 版已移除
             14) call_mod "mod_tooling.sh"      ;;
-            15) call_mod "mod_triage.sh"       ;;
+            15) call_mod "mod_triage.sh"       ;;  # lite: 3 項系統指標
             16) call_mod "mod_baseline.sh"     ;;
             17) call_mod "mod_audit_seal.sh"   ;;
             q|Q)

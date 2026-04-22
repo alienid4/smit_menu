@@ -15,9 +15,8 @@ menu() {
     echo "  4) World-writable 檔案 (後門風險)"
     echo "  5) 敏感檔異動時間 (/etc/passwd /etc/shadow /etc/sudoers)"
     echo "  6) 敏感檔 checksum (sha256)"
-    echo -e "  7) ${YEL}[變更] 壓縮指定天數以上之 *.log (自訂路徑/天數)${RST}"
-    echo -e "  8) ${RED}[高風險] 刪除指定天數以上之 *.log.gz (自訂路徑/天數)${RST}"
     echo "  b) 返回主選單"
+    echo "  (lite 版已移除壓縮/刪除 log 等變更類操作)"
     echo "======================================================"
 }
 
@@ -72,16 +71,6 @@ while true; do
         4) run_cmd "World-writable scan" world_writable ;;
         5) run_cmd "Sensitive files mtime" sensitive_mtime ;;
         6) run_cmd "Sensitive files sha256" sensitive_sha ;;
-        7) read -r -p "目錄 [/var/log] > " d; d="${d:-/var/log}"
-           read -r -p "保留天數 [7]  (超過此天數的 *.log 會被壓縮) > " days
-           days="${days:-7}"
-           run_change_cmd "Compress *.log >${days}d in ${d}" \
-               find "${d}" -type f -mtime +"${days}" -name "*.log" -exec gzip {} \; ;;
-        8) read -r -p "目錄 [/var/log] > " d; d="${d:-/var/log}"
-           read -r -p "保留天數 [30] (超過此天數的 *.log.gz 會被刪除) > " days
-           days="${days:-30}"
-           run_impact_cmd "Delete *.log.gz >${days}d in ${d}" \
-               find "${d}" -type f -mtime +"${days}" -name "*.gz" -delete ;;
         b|B) exit 0 ;;
         *)   echo "無效選項" ;;
     esac
