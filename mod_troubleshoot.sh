@@ -41,7 +41,7 @@ if [ "${TS_NONINTERACTIVE:-0}" = "1" ]; then
 else
     clear
     echo "======================================================"
-    echo " 快速自辯報告 (Troubleshoot) v1.4"
+    echo " 快速自辯報告 (Troubleshoot) v1.5"
     echo " 客訴「系統慢 / 連不進去」時執行，涵蓋 9 面向 + Appendix A (選配)"
     echo "======================================================"
     # AP port: 自動掃常見 AP port (8080/8443/9090/7001/8081/9080/8001)，無則預設 8080
@@ -63,7 +63,7 @@ fi
 : > "${SUMMARY}"
 : > "${DETAIL}"
 
-declare -A RESULT
+declare -A RESULT NAME IMPACT ACTION
 
 # =============================================================================
 # 輸出 helpers
@@ -121,12 +121,19 @@ s_block() {
     local body
     body=$(cat)
     RESULT[$n]="${result}"
+    NAME[$n]="${name}"
+    # v1.5: 自動抓「對客訴影響 / 建議動作」首行，讓 top summary 可以一行秀出問題
+    IMPACT[$n]=$(echo "${body}" | awk '/對客訴影響/{sub(/^[^:]*:[ ]*/,""); gsub(/ +$/,""); print; exit}')
+    ACTION[$n]=$(echo "${body}" | awk '/建議動作/{sub(/^[^:]*:[ ]*/,""); gsub(/ +$/,""); print; exit}')
+    # 完整 block 僅寫入 SUMMARY 檔 (不再 stream 到 stdout；由 top summary 與 cat 負責輸出順序)
     {
         echo
         printf "[%s] %-12s  %s%s%s\n" "${n}" "${name}" "${color}" "${result}" "${RST}"
         printf -- "-----------------------------------------------------------\n"
         echo "${body}"
-    } | tee -a "${SUMMARY}"
+    } >> "${SUMMARY}"
+    # 即時進度 (stderr) — 讓使用者知道每個面向已跑完
+    printf "  [%s] %-12s  %s%-4s%s\n" "${n}" "${name}" "${color}" "${result}" "${RST}" >&2
 }
 
 # =============================================================================
@@ -819,9 +826,17 @@ check_time_cert
 check_db
 check_infra
 check_ops_trail
-appendix_a
+# v1.5: appendix_a 的 stdout 也導走 (其 tee 仍會寫 SUMMARY 檔)，避免在 top summary 之前先噴 app 細項
+appendix_a > /dev/null
 
-# 總結統計
+# ========================================================================
+# v1.5: 結尾輸出重構 — 先 top summary (一眼看到問題) 再細項
+# 流程:
+#   1. 從 RESULT[] 算統計
+#   2. 組 top summary (一張字卡就能下判讀)
+#   3. 印到 stdout: top summary → 「完整細項」分隔線 → cat SUMMARY (header+9 面向+appendix)
+#   4. 把 SUMMARY 檔重組為「top summary + 原內容」，讓離線看檔也是這個順序
+# ========================================================================
 pass=0; warn=0; fail=0
 for k in "${!RESULT[@]}"; do
     case "${RESULT[$k]}" in
@@ -831,39 +846,85 @@ for k in "${!RESULT[@]}"; do
     esac
 done
 
+# 客訴判讀語
+if [ "${fail}" -gt 0 ]; then
+    verdict_state="${RED:-}異常 — 系統有明確故障${RST:-}"
+    relate_client="高度相關 (FAIL 即為客訴直接原因)"
+elif [ "${warn}" -gt 0 ]; then
+    verdict_state="${YEL:-}警告 — 有可觀察項${RST:-}"
+    relate_client="可能相關 (WARN 項可能是累積/偶發原因)"
+else
+    verdict_state="健康 (9/9 PASS)"
+    relate_client="低度相關 (本機 9/9 通過，建議往上游/AP/DB 排查)"
+fi
+
+# 列出某狀態的所有項目
+print_state_items() {
+    local target_state="$1"
+    for n in "1/9" "2/9" "3/9" "4/9" "5/9" "6/9" "7/9" "8/9" "9/9"; do
+        [ "${RESULT[$n]:-}" = "${target_state}" ] || continue
+        printf "   [%s] %-10s %s\n" "${n}" "${NAME[$n]:-}" "${IMPACT[$n]:-}"
+        printf "          動作 → %s\n" "${ACTION[$n]:-無需動作。}"
+    done
+}
+
+# 組 top summary → 暫存檔 (之後要印到 stdout + prepend 到 SUMMARY)
+TOP_TMP="$(mktemp 2>/dev/null || echo /tmp/ts_top.$$)"
 {
     echo
-    echo "============================================================"
-    echo " 報告結論"
-    echo "============================================================"
-    echo " 9 項檢查: PASS=${pass}  WARN=${warn}  FAIL=${fail}"
-    echo
+    echo "════════════════════════════════════════════════════════════════════"
+    printf " 主機狀態: %b\n" "${verdict_state}"
+    printf " 統計:     PASS=%d  WARN=%d  FAIL=%d        主機: %s  時間: %s\n" \
+           "${pass}" "${warn}" "${fail}" "${HOST}" "$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "────────────────────────────────────────────────────────────────────"
+
     if [ "${fail}" -gt 0 ]; then
-        echo " 主機狀態: ${RED:-}異常 (${fail} 項 FAIL)${RST:-}"
-        echo " 判讀    : 本主機有明確故障，SP 需優先處理 FAIL 項。"
-        echo "           客訴「慢 / 連不進去」與本主機高度相關。"
-    elif [ "${warn}" -gt 0 ]; then
-        echo " 主機狀態: 可用但有警訊 (${warn} 項 WARN)"
-        echo " 判讀    : 本主機尚可運作，警訊可能是客訴的間接原因，"
-        echo "           建議排查；若客訴時段與警訊累積吻合則優先處理。"
-    else
-        echo " 主機狀態: 正常 (9/9 PASS)"
-        echo " 判讀    : 本主機通過所有自辯檢查，問題極可能不在此主機。"
-        echo "           下一步建議排查：客戶端網路、上游防火牆 / F5 / LB、"
-        echo "                         應用層邏輯 (AP 業務日誌)、DB 端"
+        printf " %b■ FAIL 項 (立即處理)%b\n" "${RED:-}" "${RST:-}"
+        print_state_items "FAIL"
+        echo
     fi
+    if [ "${warn}" -gt 0 ]; then
+        printf " %b● WARN 項 (排程處理)%b\n" "${YEL:-}" "${RST:-}"
+        print_state_items "WARN"
+        echo
+    fi
+    if [ "${fail}" -eq 0 ] && [ "${warn}" -eq 0 ]; then
+        echo " 所有 9 個面向皆 PASS — 本機無異常"
+        echo
+    fi
+
+    printf " 客訴「慢 / 連不進去」: %s\n" "${relate_client}"
+    echo " 完整細項: ${SUMMARY}"
+    echo " 深度記錄: ${DETAIL}"
+    echo "════════════════════════════════════════════════════════════════════"
     echo
-    echo " 完整明細: ${DETAIL}"
-    echo " 本報告  : ${SUMMARY}"
-    echo "============================================================"
-} | tee -a "${SUMMARY}"
+} > "${TOP_TMP}"
 
-# 把 summary 串在 detail 末尾，一檔到底
-echo "" >> "${DETAIL}"
-echo "================ SUMMARY SNAPSHOT ================" >> "${DETAIL}"
-cat "${SUMMARY}" >> "${DETAIL}"
+# 1) 先印 top summary 到 stdout
+cat "${TOP_TMP}"
 
-# 審計 log
+# 2) 分隔線後印完整細項 (從 SUMMARY 檔倒出 — 含 header + 9 面向 + appendix)
+echo "─────────────────────── 以下為完整細項 ───────────────────────"
+cat "${SUMMARY}"
+
+# 3) 把 SUMMARY 檔重組: top summary 在最前 (離線看檔也是一樣順序)
+SUM_TMP="$(mktemp 2>/dev/null || echo /tmp/ts_sum.$$)"
+{
+    cat "${TOP_TMP}"
+    echo "─────────────────────── 以下為完整細項 ───────────────────────"
+    cat "${SUMMARY}"
+} > "${SUM_TMP}"
+mv "${SUM_TMP}" "${SUMMARY}"
+rm -f "${TOP_TMP}"
+
+# 4) detail 檔尾端串 summary 快照 (維持原行為)
+{
+    echo ""
+    echo "================ SUMMARY SNAPSHOT ================"
+    cat "${SUMMARY}"
+} >> "${DETAIL}"
+
+# 5) 審計 log
 audit_log "Troubleshoot report" "OK" "PASS=${pass} WARN=${warn} FAIL=${fail}  ${SUMMARY}"
 
 echo
