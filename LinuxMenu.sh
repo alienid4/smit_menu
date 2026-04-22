@@ -1,11 +1,16 @@
 #!/bin/bash
 ###############################################################################
 # Script Name: LinuxMenu.sh
-# Version    : v1.5
-# Build Time : 2026-04-22 23:45:00   (git commit 時刻，由 release 人寫死)
+# Version    : v1.6
+# Build Time : 2026-04-22 23:55:00   (git commit 時刻，由 release 人寫死)
 # Deploy Time: <UNSET>                (部署時由 install.sh 或 scp hook sed 寫入)
 # Description: 金融業 Linux 維運工具 主選單 (Main Controller)
 # Style      : 雙線邊框、call_mod 派遣、CASLOG 環境變數
+# Scope v1.6: + mod_troubleshoot.sh 預設簡潔模式
+#               - 預設 stdout 只印: 進度 + 總結字卡 + 「詳情看檔案」footer
+#               - 加 -m / -v / --full 才在 stdout 倒完整細項 (v1.5 的行為)
+#               - 報告檔 (SUMMARY/DETAIL) 永遠是全版，不受 -m 影響
+#               - 加 -h 顯示 usage
 # Scope v1.5: + mod_troubleshoot.sh 重構輸出順序 — 先總結再細項
 #               - 跑完 9 面向後，先印「主機狀態 / FAIL 項 / WARN 項 / 客訴關聯」字卡
 #               - 之後才倒出完整 9 個面向細項 (給要深挖的 SP 看)
@@ -25,8 +30,8 @@
 ###############################################################################
 
 # 部署時刻 (由 install/deploy 腳本覆寫這一行；未部署時顯示 UNSET)
-export SMIT_VERSION="v1.5"
-export SMIT_BUILD_TIME="2026-04-22 23:45:00"
+export SMIT_VERSION="v1.6"
+export SMIT_BUILD_TIME="2026-04-22 23:55:00"
 export SMIT_DEPLOY_TIME="UNSET"   # DEPLOY_HOOK_LINE — deploy 腳本會 sed 這行
 
 # --- 環境變數 ---

@@ -1,13 +1,53 @@
 #!/bin/bash
-# mod_troubleshoot.sh - 客戶投訴「慢/連不進去」時的自辯報告 (v1.2)
+# mod_troubleshoot.sh - 客戶投訴「慢/連不進去」時的自辯報告 (v1.6)
 # 9 個面向 + 應用層附錄，每項以「檢查範圍/指令/基準/實測/判定/對客訴影響/建議」呈現
 #   1) 效能        2) 頻寬 (含 conntrack/TW/SYN drop)   3) AP port
 #   4) Session     5) Storage                         6) 時間/憑證
 #   7) DB          8) Infra 穩定 (OOM/MCE/failed)     9) 運維軌跡 (近 1h)
 #   Appendix A (選配): 應用層深度 — 需 conf/app.conf
+#
+# v1.6 用法:
+#   bash mod_troubleshoot.sh          # 預設簡潔: 進度 + 總結字卡 + 報告檔路徑
+#   bash mod_troubleshoot.sh -m       # 顯示完整細項 (-v / --full / --verbose 同義)
+#   bash mod_troubleshoot.sh -h       # 顯示 usage
+# 報告檔 ( SUMMARY/DETAIL ) 內容永遠是全版，不受 -m 影響。
 _HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_HERE}/LinuxMenu.sh" 2>/dev/null
 : "${YEL:=\033[1;33m}"; : "${RED:=\033[0;31m}"; : "${RST:=\033[0m}"
+
+# v1.6: CLI 參數解析
+VERBOSE=0
+for arg in "$@"; do
+    case "${arg}" in
+        -m|-v|--full|--verbose) VERBOSE=1 ;;
+        -h|--help)
+            cat <<'USAGE'
+mod_troubleshoot.sh — 客訴自辯報告
+
+用法:
+  bash mod_troubleshoot.sh          預設簡潔輸出 (9 行進度 + 總結字卡)
+  bash mod_troubleshoot.sh -m       完整細項 (進度 + 總結 + 9 面向 + Appendix)
+  bash mod_troubleshoot.sh -h       顯示此 help
+
+參數別名:
+  -m  -v  --full  --verbose         以上四個等價，皆進入 verbose 模式
+
+環境變數 (可覆蓋自動偵測):
+  TS_NONINTERACTIVE=1               跳過 prompt 與 pause (cron / batch 用)
+  TS_AP_PORT=8080                   AP 監聽 port (預設自動掃常見 AP port)
+  TS_PING_TGT=10.1.1.1              Ping 目標 (預設自動抓 default gateway)
+  TS_OUTPUT_PREFIX=/path/ts         自訂輸出檔路徑前綴
+
+輸出:
+  stdout                            依 -m 決定詳簡
+  ${CASLOG_REPORT}/ts_<host>_<ts>_summary.txt   永遠全版 (總結字卡 + 9 面向 + Appendix)
+  ${CASLOG_REPORT}/ts_<host>_<ts>_detail.txt    raw 指令輸出 (最底層)
+USAGE
+            exit 0
+            ;;
+        *)  echo "未知參數: ${arg}  (用 -h 看 help)" >&2 ;;
+    esac
+done
 
 # 嘗試載入 DB 模組（給第 7 塊用）
 DB_MOD="${CASLOG_SCRIPT}/mod_db.sh"
@@ -41,7 +81,11 @@ if [ "${TS_NONINTERACTIVE:-0}" = "1" ]; then
 else
     clear
     echo "======================================================"
-    echo " 快速自辯報告 (Troubleshoot) v1.5"
+    if [ "${VERBOSE:-0}" = "1" ]; then
+        echo " 快速自辯報告 (Troubleshoot) v1.6  [mode=verbose]"
+    else
+        echo " 快速自辯報告 (Troubleshoot) v1.6  [mode=簡潔，加 -m 看細項]"
+    fi
     echo " 客訴「系統慢 / 連不進去」時執行，涵蓋 9 面向 + Appendix A (選配)"
     echo "======================================================"
     # AP port: 自動掃常見 AP port (8080/8443/9090/7001/8081/9080/8001)，無則預設 8080
@@ -900,12 +944,21 @@ TOP_TMP="$(mktemp 2>/dev/null || echo /tmp/ts_top.$$)"
     echo
 } > "${TOP_TMP}"
 
-# 1) 先印 top summary 到 stdout
+# 1) 先印 top summary 到 stdout (永遠)
 cat "${TOP_TMP}"
 
-# 2) 分隔線後印完整細項 (從 SUMMARY 檔倒出 — 含 header + 9 面向 + appendix)
-echo "─────────────────────── 以下為完整細項 ───────────────────────"
-cat "${SUMMARY}"
+# 2) 依 VERBOSE 決定是否在 stdout 接著印完整細項
+if [ "${VERBOSE:-0}" = "1" ]; then
+    echo "─────────────────────── 以下為完整細項 ───────────────────────"
+    cat "${SUMMARY}"
+else
+    # 簡潔模式: 不 stream 細項，只提示檔案位置
+    cat <<TIP
+
+ ▸ 詳情請開報告檔:  less ${SUMMARY}
+ ▸ 或重跑加參數看細項:  bash ${BASH_SOURCE[0]##*/} -m
+TIP
+fi
 
 # 3) 把 SUMMARY 檔重組: top summary 在最前 (離線看檔也是一樣順序)
 SUM_TMP="$(mktemp 2>/dev/null || echo /tmp/ts_sum.$$)"

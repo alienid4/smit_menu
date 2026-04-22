@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# install.sh - Installer for Linux SMIT 維運工具 (v1.5)
+# install.sh - Installer for Linux SMIT 維運工具 (v1.6)
 #
 # 使用方式：
 #   1. 解壓 tarball 或直接把整個 scripts/ 目錄帶到目標機
