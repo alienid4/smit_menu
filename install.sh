@@ -1,21 +1,21 @@
 #!/bin/bash
 # =============================================================================
-# install.sh - Installer for Linux SMIT 維運工具 (v1.0)
+# install.sh - Installer for Linux SMIT 維運工具 (v1.2)
 #
 # 使用方式：
 #   1. 解壓 tarball 或直接把整個 scripts/ 目錄帶到目標機
 #   2. cd scripts && sudo bash install.sh
 #
 # 會做的事：
-#   - 建立 ${BASE}/{scripts,logs,reports,conf}  (預設 BASE=/TWLog/AI，可 env 覆蓋)
+#   - 建立 ${BASE}/{scripts,logs,reports,conf}  (預設 BASE=/CASLog/AI，可 env 覆蓋)
 #   - 把本目錄下的 *.sh 複製到 ${BASE}/scripts/
 #   - chmod 750
-#   - 產出 /tmp/TWLog_AI_<timestamp>.tar.gz 方便散佈
+#   - 產出 /tmp/CASLog_AI_<timestamp>.tar.gz 方便散佈
 # =============================================================================
 set -e
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BASE="${BASE:-/TWLog/AI}"
+BASE="${BASE:-/CASLog/AI}"
 SCRIPT_DIR="${BASE}/scripts"
 LOG_DIR="${BASE}/logs"
 REPORT_DIR="${BASE}/reports"
@@ -94,7 +94,7 @@ echo "[install] 封裝完成: ${TAR}"
 cat <<EOF
 
 ╔══════════════════════════════════════════════════════════════╗
-║  金融業 Linux 維運工具  v1.0  已安裝完成
+║  金融業 Linux 維運工具  v1.2  已安裝完成
 ║
 ║  啟動方式:
 ║      bash ${SCRIPT_DIR}/LinuxMenu.sh

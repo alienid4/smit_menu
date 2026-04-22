@@ -3,13 +3,13 @@
 # 自動偵測這台主機上有哪些 DB（local server / client only / none），
 # 讓使用者挑一種或跑所有偵測到的。
 #
-# 配置檔：${TWLOG_CONF}/db.conf（若不存在則僅用偵測 + 預設值）
+# 配置檔：${CASLOG_CONF}/db.conf（若不存在則僅用偵測 + 預設值）
 # 密碼：一律不寫在 db.conf，改指向各 DB 原生認證檔
 _HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_HERE}/LinuxMenu.sh" 2>/dev/null
 : "${YEL:=\033[1;33m}"; : "${RED:=\033[0;31m}"; : "${RST:=\033[0m}"
 
-CONF_FILE="${TWLOG_CONF}/db.conf"
+CONF_FILE="${CASLOG_CONF}/db.conf"
 [ -f "${CONF_FILE}" ] && . "${CONF_FILE}"
 
 # =============================================================================

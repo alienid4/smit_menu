@@ -4,19 +4,19 @@
 #   每天開盤前自動跑一次 troubleshoot，存為「當天的 baseline」，
 #   交易中出事時 diff 兩份 summary，秒級看出「今天跟平日不一樣在哪」。
 #
-# 設定 (透過 /TWLog/AI/conf/baseline.conf 或環境變數):
+# 設定 (透過 /CASLog/AI/conf/baseline.conf 或環境變數):
 #   BL_AP_PORT=8080
 #   BL_PING_TGT=10.0.0.1         (空白則自動抓 gateway)
 #   BL_RETAIN_DAYS=30            (保留天數，超過自動清)
 #
 # cron 範例 (每天開盤前 07:30):
-#   30 7 * * 1-5 root  bash ${TWLOG_SCRIPT}/mod_baseline.sh --snapshot >/dev/null 2>&1
+#   30 7 * * 1-5 root  bash ${CASLOG_SCRIPT}/mod_baseline.sh --snapshot >/dev/null 2>&1
 _HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_HERE}/LinuxMenu.sh" 2>/dev/null
 : "${YEL:=\033[1;33m}"; : "${RED:=\033[0;31m}"; : "${RST:=\033[0m}"
 
-BL_DIR="${TWLOG_REPORT}/baselines"
-BL_CONF="${TWLOG_CONF}/baseline.conf"
+BL_DIR="${CASLOG_REPORT}/baselines"
+BL_CONF="${CASLOG_CONF}/baseline.conf"
 mkdir -p "${BL_DIR}"
 [ -f "${BL_CONF}" ] && . "${BL_CONF}"
 
@@ -145,7 +145,7 @@ interactive() {
   SHELL=/bin/bash
   PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
-  30 7 * * 1-5 root  bash ${TWLOG_SCRIPT}/mod_baseline.sh --snapshot >> ${TWLOG_LOG}/baseline.log 2>&1
+  30 7 * * 1-5 root  bash ${CASLOG_SCRIPT}/mod_baseline.sh --snapshot >> ${CASLOG_LOG}/baseline.log 2>&1
 
   建立方式：
     sudo nano /etc/cron.d/linuxmenu-baseline

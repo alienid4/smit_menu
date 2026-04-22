@@ -1,25 +1,26 @@
 #!/bin/bash
 ###############################################################################
 # Script Name: LinuxMenu.sh
-# Version: v1.0
-# Last Update: 2026-04-19
+# Version: v1.2
+# Last Update: 2026-04-22
 # Description: 金融業 Linux 維運工具 主選單 (Main Controller)
-# Style     : 雙線邊框、call_mod 派遣、TWLOG 環境變數
-# Scope v1.0: 三色 wrapper、audit log、跨 distro (RHEL/Debian)、完整 11 個子模組
-#             針對金融業資訊處 Linux SP 維運需求設計
+# Style     : 雙線邊框、call_mod 派遣、CASLOG 環境變數
+# Scope v1.2: 三色 wrapper、audit log、跨 distro (RHEL/Debian)、17 個子模組
+#             + T0 合規 (append-only + HMAC) + baseline + triage + tooling
+#             預設根路徑 /CASLog/AI (可由 CASLOG_BASE env 覆蓋)
 ###############################################################################
 
 # --- 環境變數 ---
-# TWLOG_BASE 可透過環境變數覆蓋，預設 /TWLog/AI
-export TWLOG_BASE="${TWLOG_BASE:-/TWLog/AI}"
-export TWLOG_SCRIPT="${TWLOG_BASE}/scripts"
-export TWLOG_LOG="${TWLOG_BASE}/logs"
-export TWLOG_REPORT="${TWLOG_BASE}/reports"
-export TWLOG_CONF="${TWLOG_BASE}/conf"
-mkdir -p "${TWLOG_LOG}" "${TWLOG_REPORT}" "${TWLOG_SCRIPT}"
+# CASLOG_BASE 可透過環境變數覆蓋，預設 /CASLog/AI
+export CASLOG_BASE="${CASLOG_BASE:-/CASLog/AI}"
+export CASLOG_SCRIPT="${CASLOG_BASE}/scripts"
+export CASLOG_LOG="${CASLOG_BASE}/logs"
+export CASLOG_REPORT="${CASLOG_BASE}/reports"
+export CASLOG_CONF="${CASLOG_BASE}/conf"
+mkdir -p "${CASLOG_LOG}" "${CASLOG_REPORT}" "${CASLOG_SCRIPT}"
 
 export TODAY="$(date +%Y%m%d)"
-export LOG_FILE="${TWLOG_LOG}/LinuxMenu_main_${TODAY}.log"
+export LOG_FILE="${CASLOG_LOG}/LinuxMenu_main_${TODAY}.log"
 
 # T0 合規：若當日 log 尚未存在先建，並設 append-only (tamper-evident)
 # 在 xfs / 權限不足情況下靜默略過，不擋流程
@@ -130,7 +131,7 @@ export -f audit_log run_cmd run_change_cmd run_impact_cmd pause
 
 # --- 子腳本派遣 (承襲 v1.4) ---
 call_mod() {
-    local mod_file="${TWLOG_SCRIPT}/$1"
+    local mod_file="${CASLOG_SCRIPT}/$1"
     if [[ -f "$mod_file" ]]; then
         bash "$mod_file"
     else
@@ -145,7 +146,7 @@ show_menu() {
     local distro_tag="${DISTRO}"
     [ "${DISTRO}" = "unknown" ] && distro_tag="${RED}unknown${RST}"
     echo "======================================================"
-    echo " 金融業 Linux 維運工具  [Version: v1.0]"
+    echo " 金融業 Linux 維運工具  [Version: v1.2]"
     echo " 主機: $(hostname)   使用者: $(whoami)"
     echo -e " OS: ${distro_tag}   時間: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "======================================================"

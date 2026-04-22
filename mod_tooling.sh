@@ -128,7 +128,7 @@ report() {
 }
 
 export_csv() {
-    local csv="${TWLOG_REPORT}/tooling_$(hostname)_$(date +%Y%m%d_%H%M%S).csv"
+    local csv="${CASLOG_REPORT}/tooling_$(hostname)_$(date +%Y%m%d_%H%M%S).csv"
     {
         echo "cmd,installed,rhel_pkg,deb_pkg,level,desc"
         for item in "${TOOLS[@]}"; do

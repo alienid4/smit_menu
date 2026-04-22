@@ -12,14 +12,14 @@
 #
 # 依賴：openssl, sha256sum, chattr (ext2/3/4)
 # cron 範例 (每天 23:59 封存前一天):
-#   59 23 * * * root bash ${TWLOG_SCRIPT}/mod_audit_seal.sh --daily >> ${TWLOG_LOG}/audit_seal.log 2>&1
+#   59 23 * * * root bash ${CASLOG_SCRIPT}/mod_audit_seal.sh --daily >> ${CASLOG_LOG}/audit_seal.log 2>&1
 _HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_HERE}/LinuxMenu.sh" 2>/dev/null
 : "${YEL:=\033[1;33m}"; : "${RED:=\033[0;31m}"; : "${RST:=\033[0m}"
 
-HMAC_KEY_FILE="${TWLOG_CONF}/hmac.key"
-MANIFEST="${TWLOG_LOG}/audit_seal.manifest"
-SEAL_HISTORY="${TWLOG_LOG}/audit_seal_history.log"
+HMAC_KEY_FILE="${CASLOG_CONF}/hmac.key"
+MANIFEST="${CASLOG_LOG}/audit_seal.manifest"
+SEAL_HISTORY="${CASLOG_LOG}/audit_seal_history.log"
 # manifest 不進 LOG_DIR 根目錄以免自己被 +a 後影響 rotate; 但仍寫在 LOG_DIR 方便集中
 
 # 覆蓋 audit_log — 本模組的審計寫到獨立 history 檔，
@@ -89,7 +89,7 @@ manifest_append() {
 # =============================================================================
 protect_logs() {
     local applied=0 skipped=0
-    for f in "${TWLOG_LOG}"/*.log; do
+    for f in "${CASLOG_LOG}"/*.log; do
         [ -f "$f" ] || continue
         if lsattr "$f" 2>/dev/null | grep -q '\-\-\-\-a'; then
             skipped=$((skipped+1))
@@ -116,7 +116,7 @@ daily_seal() {
 
     echo "[seal] ${ts} 封存 ${day} 的 log..."
     local count=0 failed=0
-    for f in "${TWLOG_LOG}"/*"${day}"*.log; do
+    for f in "${CASLOG_LOG}"/*"${day}"*.log; do
         [ -f "$f" ] || continue
         local name sha hmac lines size
         name=$(basename "$f")
@@ -162,7 +162,7 @@ verify_log() {
 
     # 接受完整路徑或只有檔名
     local name; name=$(basename "${target}")
-    local path="${TWLOG_LOG}/${name}"
+    local path="${CASLOG_LOG}/${name}"
     [ ! -f "${path}" ] && { echo "${RED}log 不存在: ${path}${RST}"; return 2; }
 
     # 從 manifest 抓最後一次該檔的紀錄
@@ -205,7 +205,7 @@ verify_all() {
     names=$(awk -F'|' '{gsub(/ /,"",$3); print $3}' "${MANIFEST}" | sort -u)
     for name in ${names}; do
         total=$((total+1))
-        local path="${TWLOG_LOG}/${name}"
+        local path="${CASLOG_LOG}/${name}"
         if [ ! -f "${path}" ]; then
             echo -e "  [${YEL}MISSING${RST}] ${name}"
             missing=$((missing+1))
@@ -246,7 +246,7 @@ show_status() {
     fi
     echo
     echo "── append-only log ──"
-    for f in "${TWLOG_LOG}"/*.log; do
+    for f in "${CASLOG_LOG}"/*.log; do
         [ -f "$f" ] || continue
         local attr; attr=$(lsattr "$f" 2>/dev/null | awk '{print $1}')
         local marker="  "
@@ -273,7 +273,7 @@ show_cron_template() {
   PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
   # 每日 23:59 封存今日 log
-  59 23 * * * root  bash ${TWLOG_SCRIPT}/mod_audit_seal.sh --daily >> ${TWLOG_LOG}/audit_seal.log 2>&1
+  59 23 * * * root  bash ${CASLOG_SCRIPT}/mod_audit_seal.sh --daily >> ${CASLOG_LOG}/audit_seal.log 2>&1
 
 建立：
   sudo install -m 644 /dev/stdin /etc/cron.d/linuxmenu-audit-seal <<EOF2

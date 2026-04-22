@@ -10,14 +10,14 @@ source "${_HERE}/LinuxMenu.sh" 2>/dev/null
 : "${YEL:=\033[1;33m}"; : "${RED:=\033[0;31m}"; : "${RST:=\033[0m}"
 
 # 嘗試載入 DB 模組（給第 7 塊用）
-DB_MOD="${TWLOG_SCRIPT}/mod_db.sh"
+DB_MOD="${CASLOG_SCRIPT}/mod_db.sh"
 [ -f "${DB_MOD}" ] && . "${DB_MOD}"
 
 # 選配 app.conf (Appendix A)
-APP_CONF="${TWLOG_CONF}/app.conf"
+APP_CONF="${CASLOG_CONF}/app.conf"
 [ -f "${APP_CONF}" ] && . "${APP_CONF}"
 
-REPORT_DIR="${TWLOG_REPORT}"
+REPORT_DIR="${CASLOG_REPORT}"
 TS="$(date '+%Y%m%d_%H%M%S')"
 HOST="$(hostname)"
 # 非互動模式 (baseline cron 會用)：
@@ -711,7 +711,7 @@ EOF
 }
 
 # =============================================================================
-# Appendix A 應用層深度 (選配，需 ${TWLOG_CONF}/app.conf)
+# Appendix A 應用層深度 (選配，需 ${CASLOG_CONF}/app.conf)
 # =============================================================================
 appendix_a() {
     [ ! -f "${APP_CONF}" ] && return 0

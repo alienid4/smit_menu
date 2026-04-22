@@ -1,7 +1,7 @@
 # 部署時產生的資料 (不該進 repo)
 *.tar.gz
 *.zip
-/TWLog/
+/CASLog/
 logs/
 reports/
 baselines/

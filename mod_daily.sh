@@ -6,7 +6,7 @@ source "${_HERE}/LinuxMenu.sh" 2>/dev/null
 : "${AUTHLOG:=/var/log/secure}"
 : "${SYSLOG:=/var/log/messages}"
 
-REPORT_DIR="${TWLOG_REPORT}"
+REPORT_DIR="${CASLOG_REPORT}"
 TS="$(date '+%Y%m%d_%H%M%S')"
 REPORT="${REPORT_DIR}/daily_$(hostname)_${TS}.txt"
 mkdir -p "${REPORT_DIR}"
