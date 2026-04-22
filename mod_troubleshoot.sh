@@ -41,17 +41,24 @@ if [ "${TS_NONINTERACTIVE:-0}" = "1" ]; then
 else
     clear
     echo "======================================================"
-    echo " 快速自辯報告 (Troubleshoot) v1.2"
+    echo " 快速自辯報告 (Troubleshoot) v1.4"
     echo " 客訴「系統慢 / 連不進去」時執行，涵蓋 9 面向 + Appendix A (選配)"
     echo "======================================================"
-    read -r -p "要檢查的 AP 監聽 port [8080] > " AP_PORT
+    # AP port: 自動掃常見 AP port (8080/8443/9090/7001/8081/9080/8001)，無則預設 8080
+    AP_PORT=$(ss -tnlp 2>/dev/null | awk 'NR>1{n=split($4,a,":"); p=a[n]; if(p~/^(8080|8443|9090|7001|8081|9080|8001)$/){print p; exit}}')
     AP_PORT="${AP_PORT:-8080}"
-    read -r -p "Ping 測試目標 IP/hostname [自動抓 gateway] > " PING_TGT
+    PING_TGT=""
 fi
 if [ -z "${PING_TGT}" ]; then
     PING_TGT=$(ip route 2>/dev/null | awk '/default/{print $3; exit}')
 fi
 [ -z "${PING_TGT}" ] && PING_TGT="127.0.0.1"
+if [ "${TS_NONINTERACTIVE:-0}" != "1" ]; then
+    echo " AP 監聽 port (自動): ${AP_PORT}"
+    echo " Ping 目標 (自動):    ${PING_TGT}"
+    echo " (如需指定： TS_AP_PORT=xxxx TS_PING_TGT=x.x.x.x bash mod_troubleshoot.sh)"
+    echo " 開始檢查，約 30-60 秒..."
+fi
 
 : > "${SUMMARY}"
 : > "${DETAIL}"

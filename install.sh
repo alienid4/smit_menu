@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# install.sh - Installer for Linux SMIT 維運工具 (v1.3)
+# install.sh - Installer for Linux SMIT 維運工具 (v1.4)
 #
 # 使用方式：
 #   1. 解壓 tarball 或直接把整個 scripts/ 目錄帶到目標機
@@ -9,10 +9,12 @@
 # 會做的事：
 #   - 建立 ${BASE}/{scripts,logs,reports,conf}  (預設 BASE=/CASLog/AI，可 env 覆蓋)
 #   - 把本目錄下的 *.sh 複製到 ${BASE}/scripts/
+#   - 將 LinuxMenu.sh 裡面的 SMIT_DEPLOY_TIME 寫成當下時刻 (v1.4 新增)
 #   - chmod 750
-#   - 產出 /tmp/CASLog_AI_<timestamp>.tar.gz 方便散佈
+#   - 產出 /tmp/LinuxMenu_<timestamp>.tar.gz 方便散佈
 # =============================================================================
 set -e
+DEPLOY_TS="$(date '+%Y-%m-%d %H:%M:%S')"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE="${BASE:-/CASLog/AI}"
@@ -41,6 +43,13 @@ for f in "${EXPECTED[@]}"; do
     chmod 750 "${SCRIPT_DIR}/${f}"
     echo "  → ${SCRIPT_DIR}/${f}"
 done
+
+# v1.4: 寫入 DEPLOY_TIME 到 LinuxMenu.sh (#-DEPLOY_HOOK_LINE)
+if [ -f "${SCRIPT_DIR}/LinuxMenu.sh" ]; then
+    sed -i "s|^export SMIT_DEPLOY_TIME=.*# DEPLOY_HOOK_LINE|export SMIT_DEPLOY_TIME=\"${DEPLOY_TS}\"   # DEPLOY_HOOK_LINE|" \
+        "${SCRIPT_DIR}/LinuxMenu.sh"
+    echo "[install] DEPLOY_TIME 已寫入 LinuxMenu.sh: ${DEPLOY_TS}"
+fi
 
 # 設定檔範本（不覆蓋既有自訂，僅 sample 檔每次更新）
 install_sample() {
@@ -94,7 +103,7 @@ echo "[install] 封裝完成: ${TAR}"
 cat <<EOF
 
 ╔══════════════════════════════════════════════════════════════╗
-║  金融業 Linux 維運工具  v1.3  已安裝完成
+║  金融業 Linux 維運工具  v1.4  已安裝完成   (Deploy: ${DEPLOY_TS})
 ║
 ║  啟動方式:
 ║      bash ${SCRIPT_DIR}/LinuxMenu.sh
