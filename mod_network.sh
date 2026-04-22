@@ -120,46 +120,10 @@ fw_runtime_to_perm() {
 }
 
 # =============================================================================
-# 防火牆管理子選單
+# 防火牆管理子選單 — lite 版已移除 (純觀察不做 CRUD)
+# 若需新增/刪除/reload 防火牆，請走 Ansible / 公司變更流程
+# 純查詢用上面的 fw_list (主選單 9)
 # =============================================================================
-firewall_menu() {
-    while true; do
-        clear
-        echo "======================================================"
-        echo " 防火牆管理 (${FW})"
-        echo "======================================================"
-        echo "  1) 列出當前規則 (ports / services / zones)"
-        echo -e "  2) ${YEL}[變更] 新增 port${RST}"
-        echo -e "  3) ${YEL}[變更] 刪除 port${RST}"
-        echo -e "  4) ${YEL}[變更] 新增 service (http/https/ssh/...)${RST}"
-        echo -e "  5) ${YEL}[變更] 刪除 service${RST}"
-        echo -e "  6) ${YEL}[變更] Reload 防火牆${RST}"
-        echo -e "  7) ${YEL}[變更] Runtime → Permanent (RHEL only)${RST}"
-        echo "  b) 返回上層"
-        echo "======================================================"
-        read -r -p "選擇 > " c || exit 0
-        case "$c" in
-            1) run_cmd "Firewall list" fw_list ;;
-            2) read -r -p "Port 號 > " p
-               read -r -p "Protocol [tcp / udp] (預設 tcp) > " pr
-               pr="${pr:-tcp}"
-               run_change_cmd "FW add ${p}/${pr}" fw_add_port "${p}" "${pr}" ;;
-            3) read -r -p "Port 號 > " p
-               read -r -p "Protocol [tcp / udp] (預設 tcp) > " pr
-               pr="${pr:-tcp}"
-               run_change_cmd "FW remove ${p}/${pr}" fw_remove_port "${p}" "${pr}" ;;
-            4) read -r -p "Service 名稱 (e.g. http / https / ssh) > " s
-               run_change_cmd "FW add service ${s}" fw_add_service "${s}" ;;
-            5) read -r -p "Service 名稱 > " s
-               run_change_cmd "FW remove service ${s}" fw_remove_service "${s}" ;;
-            6) run_change_cmd "FW reload" fw_reload ;;
-            7) run_change_cmd "FW runtime→permanent" fw_runtime_to_perm ;;
-            b|B) return 0 ;;
-            *)   echo "無效選項" ;;
-        esac
-        pause
-    done
-}
 
 # =============================================================================
 # 主選單

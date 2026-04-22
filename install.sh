@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# install.sh - Installer for Linux SMIT 系統觀察工具 (lite-v0.1)
+# install.sh - Installer for Linux SMIT 系統觀察工具 (lite-v0.2)
 #
 # 使用方式：
 #   1. 解壓 tarball 或直接把整個 scripts/ 目錄帶到目標機
@@ -31,8 +31,10 @@ EXPECTED=(LinuxMenu.sh mod_system.sh mod_network.sh mod_file.sh mod_process.sh
           mod_user.sh mod_audit.sh mod_pkg.sh mod_storage.sh mod_cert.sh
           mod_security.sh mod_others.sh mod_troubleshoot.sh mod_daily.sh
           mod_tooling.sh mod_triage.sh mod_baseline.sh
-          mod_audit_seal.sh)
+          mod_audit_seal.sh
+          mod_dashboard.sh mod_trading.sh mod_sfp.sh)
 # lite 版已移除: mod_java.sh (改 mod_cert.sh), mod_db.sh
+# lite-v0.2 新增: mod_dashboard (0), mod_trading (18), mod_sfp (19)
 for f in "${EXPECTED[@]}"; do
     if [ ! -f "${HERE}/${f}" ]; then
         echo "[install] 警告: 缺少 ${f}"
@@ -59,6 +61,14 @@ install_sample() {
 }
 # lite 版無 db.conf / app.conf (DB 與 AP 功能已移除)
 install_sample "baseline.conf.sample" "baseline.conf"
+install_sample "health.conf.sample"   "health.conf"
+
+# trading.conf 不自動建立 — SP 自己判斷要不要啟用
+if [ -f "${HERE}/trading.conf.sample" ]; then
+    cp "${HERE}/trading.conf.sample" "${CONF_DIR}/trading.conf.sample"
+    chmod 600 "${CONF_DIR}/trading.conf.sample"
+    echo "[install] trading.conf.sample 已放置 (SP 若為交易主機需手動啟用)"
+fi
 
 # ============================================================================
 # T0 合規設定 — HMAC key + 每日封存 cron + append-only
@@ -94,7 +104,7 @@ echo "[install] 封裝完成: ${TAR}"
 cat <<EOF
 
 ╔══════════════════════════════════════════════════════════════╗
-║  金融業 Linux 系統觀察工具  lite-v0.1  已安裝完成 (純觀察版)
+║  金融業 Linux 系統觀察工具  lite-v0.2  已安裝完成 (純觀察版)
 ║
 ║  啟動方式:
 ║      bash ${SCRIPT_DIR}/LinuxMenu.sh

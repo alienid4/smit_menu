@@ -1,0 +1,55 @@
+# =============================================================================
+# ${CASLOG_CONF}/health.conf    每台主機自己的 dashboard 門檻
+# =============================================================================
+# 若不存在則用內建預設。每台主機容忍度不同 (如交易機嚴 / 監控機鬆)。
+# chmod 600 建議。
+# =============================================================================
+
+# --- 磁碟 ---
+DISK_WARN_PCT=80
+DISK_FAIL_PCT=95
+
+# --- Swap ---
+SWAP_WARN_PCT=10
+SWAP_FAIL_PCT=50
+
+# --- 記憶體 (可用 GB) ---
+MEM_AVAIL_GB_WARN=1.0
+MEM_AVAIL_GB_FAIL=0.3
+
+# --- CPU Load (× cores 倍數) ---
+LOAD_FACTOR_WARN=2
+LOAD_FACTOR_FAIL=4
+CPU_IDLE_WARN=10       # CPU idle % 低於此 → 注意
+
+# --- 網路 conntrack ---
+CONNTRACK_WARN=80
+CONNTRACK_FAIL=95
+
+# --- TCP Session ---
+CLOSE_WAIT_WARN=100
+CLOSE_WAIT_FAIL=500
+TIME_WAIT_PCT_WARN=60      # 佔 ephemeral port range 比例
+TIME_WAIT_PCT_FAIL=90
+
+# --- TCP retrans (一般系統 1% / 股票交易可嚴格到 0.01%) ---
+TCP_RETRANS_WARN_PCT=1
+TCP_RETRANS_FAIL_PCT=5
+
+# --- FD ---
+FD_WARN_PCT=80
+FD_FAIL_PCT=95
+
+# --- NIC err ---
+NIC_ERR_WARN=1
+
+# --- OOM (24h 內次數) ---
+OOM_WARN=1
+OOM_FAIL=3
+
+# --- IO await (ms) ---
+IOAWAIT_WARN_MS=20
+IOAWAIT_FAIL_MS=100
+
+# --- 自動降級 (load >= cores × 此值 → 自動 --fast) ---
+AUTO_DOWNGRADE_LOAD_MULTIPLE=8

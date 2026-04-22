@@ -299,8 +299,8 @@ interactive() {
         echo "  4) 驗證全部 manifest 紀錄"
         echo "  5) 顯示 cron 範例"
         echo "  6) 列出 manifest (最近 30 筆)"
-        echo -e "  7) ${YEL}[變更] 啟用所有現有 log 為 append-only${RST}"
         echo "  b) 返回主選單"
+        echo "  (lite 版已由 install.sh 自動設 append-only，不放變更選項)"
         echo "======================================================"
         read -r -p "選擇 > " c || exit 0
         case "$c" in
@@ -311,7 +311,7 @@ interactive() {
             4) run_cmd "Verify all"         verify_all ;;
             5) run_cmd "Show cron template" show_cron_template ;;
             6) run_cmd "List manifest"      bash -c "tail -30 '${MANIFEST}' 2>/dev/null || echo '(manifest 不存在)'" ;;
-            7) run_change_cmd "Enable append-only" protect_logs ;;
+            # 7) 啟用 append-only - lite 版由 install.sh 自動設，不放互動選項
             b|B) exit 0 ;;
             *)   echo "無效選項" ;;
         esac

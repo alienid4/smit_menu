@@ -1,4 +1,4 @@
-# smit_menu — 金融業 Linux 維運工具 v1.3
+# smit_menu — 金融業 Linux 系統觀察工具 (lite-v0.2)
 
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![shell](https://img.shields.io/badge/shell-bash%204%2B-green.svg)]()
@@ -329,8 +329,10 @@ sudo apt-get install -y sysstat lsof ethtool netcat-openbsd chrony iputils-arpin
 |---|---|---|
 | v1.0 | 2026-04-20 | 首版；16 模組；troubleshoot 9 面向 + DB 6 種 + triage + baseline + tooling |
 | v1.1 | 2026-04-20 | 新增選項 17 審計封存與驗證（T0 合規：append-only + HMAC + 每日 cron seal） |
-| v1.2 | 2026-04-22 | 預設根路徑 `/TWLog/AI` → `/CASLog/AI`；環境變數 `TWLOG_*` → `CASLOG_*`（breaking change，需遷移舊部署） |
-| **v1.3** | **2026-04-22** | **`run_impact_cmd` 升級雙重確認（CONFIRM + 打主機名 + 10 秒 timeout）**；**distro 偵測改用 `/etc/os-release`**，依版本自動切 `PKG` (yum/dnf) 與 `FAILLOCK` (pam_tally2/faillock)；主選單顯示 `DISTRO_PRETTY`、`PKG`、`FW`、`FAILLOCK` |
+| v1.2 | 2026-04-22 | 預設根路徑 `/TWLog/AI` → `/CASLog/AI`；環境變數 `TWLOG_*` → `CASLOG_*` |
+| v1.3 | 2026-04-22 | `run_impact_cmd` 升級雙重確認；distro 偵測改用 `/etc/os-release` |
+| lite-v0.1 | 2026-04-22 | 從 v1.3 分支；簡化為純觀察版（移除 DB、AP、變更/高風險） |
+| **lite-v0.2** | **2026-04-22** | **新增健康儀表板（選項 0）— 40+ 指標、分區、自動通知建議**、**股票交易專區（選項 18，需 trading.conf）**、**SFP/GBIC 老化監控（選項 19，含 baseline 比對）**、**帳號鎖定/密碼到期偵測**、**compat_check 相容性警告**、**主選單 mini health banner**、**dashboard 三模式 --fast/default/--full + --simple + --verbose + --json**、**壓力感知自動降級**、**NFS timeout 保護**、**缺套件自動降級** |
 
 ## License
 

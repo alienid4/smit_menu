@@ -111,7 +111,6 @@ interactive() {
         echo "  2) 立即產生今天的 baseline (手動)"
         echo "  3) Diff — 今天 vs 某天"
         echo "  4) Diff — 今天 vs 最近一份 (最常用)"
-        echo "  5) 清除 7 天以上舊 baseline"
         echo "  6) 顯示 cron 範例"
         echo "  b) 返回主選單"
         echo "======================================================"
@@ -134,8 +133,7 @@ interactive() {
                    run_cmd "Diff ${today} vs ${latest}" diff_baselines "${today}" "${latest}"
                fi
                ;;
-            5) run_change_cmd "Purge baselines >7 days" \
-                   find "${BL_DIR}" -maxdepth 1 -name "baseline_*" -mtime +7 -delete ;;
+            # 5) 清除 >7d baseline — lite 版不放互動變更；snapshot 會自動清 BL_RETAIN_DAYS 之外
             6) cat <<EOF
 
 ── cron 範例 ──

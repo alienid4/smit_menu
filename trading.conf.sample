@@ -1,0 +1,49 @@
+# =============================================================================
+# ${CASLOG_CONF}/trading.conf   股票交易系統專用設定
+# =============================================================================
+# ⚠️  此檔含內部拓撲，屬敏感資訊。
+#
+# 啟用方式：
+#    cp trading.conf.sample trading.conf
+#    chmod 600 trading.conf
+#    編輯下方 <REPLACE_ME> 為實際值
+#
+# 若此檔不存在，主選單 18 會提示未啟用；本模組不自動運行。
+# 一般 (非交易) 主機不要啟用，避免誤判。
+# =============================================================================
+
+# --- 交易時段 (24h format) ---
+TRADING_HOURS="09:00-13:30"           # 台股早盤+午盤
+PREMARKET_HOURS="08:30-09:00"
+POSTMARKET_HOURS="13:30-15:00"        # 盤後清算
+CLOSING_AUCTION="13:25-13:30"         # 尾盤集合競價
+WEEKEND_SKIP=1                        # 週末非交易日不告警
+
+# --- 流量基準 (pps) ---
+PPS_TRADING_MIN=1000                  # 交易時段低於此 pps → FAIL (AP 可能斷)
+PPS_TRADING_TYPICAL_LOW=5000
+PPS_TRADING_TYPICAL_HIGH=50000
+PPS_CLOSING_PEAK=150000               # 尾盤峰值
+PPS_NONTRADING_MAX=500                # 非交易時段超過此 pps → 可疑
+
+# --- 延遲基準 (股票閾值比一般系統嚴 10 倍) ---
+RTT_WARN_MS=5
+RTT_FAIL_MS=20
+TCP_RETRANS_TRADING_WARN_PCT=0.01
+TCP_RETRANS_TRADING_FAIL_PCT=0.1
+
+# --- 時間同步 (股票要求 ms 等級) ---
+NTP_DRIFT_WARN_MS=5
+NTP_DRIFT_FAIL_MS=50
+
+# --- 交易所連線 (format: ip:label 以空白分隔) ---
+# EXCHANGE_GATEWAYS="<REPLACE_ME_IP1>:GW-A <REPLACE_ME_IP2>:GW-B"
+EXCHANGE_GATEWAYS=""
+
+# --- FIX / OUCH / ITCH session port ---
+# FIX_PORTS="9876 9877"
+FIX_PORTS=""
+
+# --- Multicast 行情訂閱 group (若本機訂閱行情) ---
+# MCAST_GROUPS="239.1.1.1:6100 239.1.1.2:6101"
+MCAST_GROUPS=""
