@@ -60,12 +60,17 @@ while true; do
     menu
     read -r -p "選擇 > " c || exit 0
     case "$c" in
-        1) read -r -p "掃描路徑 [/] > " p;    p="${p:-/}"
-           read -r -p "大小門檻 [100M] (如 50M / 500M / 1G) > " sz
-           sz="${sz:-100M}"
+        1) echo "掃描路徑 [/]，大小門檻 [100M] - 3 秒內可改，否則用預設"
+           p=""; sz=""
+           read -r -t 3 -p "路徑 (Enter=/) > " p || true; p="${p:-/}"
+           read -r -t 3 -p "大小 (Enter=100M, 如 500M/1G) > " sz || true; sz="${sz:-100M}"
+           echo "→ find ${p} >${sz}"
            run_cmd "Find >${sz} files in ${p}" \
                find "${p}" -xdev -type f -size +"${sz}" -printf "%s %p\n" ;;
-        2) read -r -p "目錄 [/var/log] > " d; d="${d:-/var/log}"
+        2) echo "目錄使用量 [/var/log] - 3 秒內可改，否則用預設"
+           d=""
+           read -r -t 3 -p "目錄 (Enter=/var/log) > " d || true; d="${d:-/var/log}"
+           echo "→ du -sh ${d}/*"
            run_cmd "Disk usage ${d}" du -sh "${d}"/* ;;
         3) run_cmd "SUID/SGID audit" suid_audit ;;
         4) run_cmd "World-writable scan" world_writable ;;

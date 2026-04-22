@@ -30,20 +30,23 @@ else
     mkdir -p "${REPORT_DIR}"
 fi
 
-if [ "${TS_NONINTERACTIVE:-0}" = "1" ]; then
-    PING_TGT="${TS_PING_TGT:-}"
-else
-    clear
-    echo "======================================================"
-    echo " 快速自辯報告 (lite) - 純系統觀察"
-    echo " 7 面向：效能 / 頻寬 / Session / Storage / 時間憑證 / Infra / 運維軌跡"
-    echo "======================================================"
-    read -r -p "Ping 測試目標 IP/hostname [自動抓 gateway] > " PING_TGT
-fi
+# Ping 目標自動抓 (gateway)，不再 prompt —— 急救時不問題
+PING_TGT="${TS_PING_TGT:-}"
 if [ -z "${PING_TGT}" ]; then
     PING_TGT=$(ip route 2>/dev/null | awk '/default/{print $3; exit}')
 fi
 [ -z "${PING_TGT}" ] && PING_TGT="127.0.0.1"
+
+if [ "${TS_NONINTERACTIVE:-0}" != "1" ]; then
+    clear
+    echo "======================================================"
+    echo " 快速自辯報告 (lite) - 純系統觀察"
+    echo " 7 面向：效能 / 頻寬 / Session / Storage / 時間憑證 / Infra / 運維軌跡"
+    echo " Ping 目標 (自動): ${PING_TGT}"
+    echo "======================================================"
+    echo " 開始檢查，約 30-60 秒..."
+    sleep 1
+fi
 
 : > "${SUMMARY}"
 : > "${DETAIL}"
