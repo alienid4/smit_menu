@@ -1,5 +1,5 @@
 #!/bin/bash
-# mod_troubleshoot.sh - 客戶投訴「慢/連不進去」時的自辯報告 (v1.6)
+# mod_troubleshoot.sh - 客戶投訴「慢/連不進去」時的自辯報告 (v1.7)
 # 9 個面向 + 應用層附錄，每項以「檢查範圍/指令/基準/實測/判定/對客訴影響/建議」呈現
 #   1) 效能        2) 頻寬 (含 conntrack/TW/SYN drop)   3) AP port
 #   4) Session     5) Storage                         6) 時間/憑證
@@ -75,22 +75,41 @@ else
     mkdir -p "${REPORT_DIR}"
 fi
 
+# v1.7: AP port 偵測策略
+#   1. 若 TS_AP_PORT 有設 → 尊重 SP 意圖 (SOP 指定的 port，沒 listener 就該 FAIL)
+#   2. 否則自動掃 common AP port 白名單
+#      (80/443/3000/5000/7001/8000/8001/8080/8081/8443/9080/9090)
+#   3. 若仍沒抓到 → AP_PORT 保持空字串 → check_ap 會回報 N/A (非 AP 角色)
+AP_PORT_SCAN_LIST='80|443|3000|5000|7001|8000|8001|8080|8081|8443|9080|9090'
+
+auto_detect_ap_port() {
+    ss -tnlp 2>/dev/null \
+        | awk -v w="^(${AP_PORT_SCAN_LIST})\$" \
+              'NR>1{n=split($4,a,":"); p=a[n]; if(p ~ w){print p; exit}}'
+}
+
 if [ "${TS_NONINTERACTIVE:-0}" = "1" ]; then
-    AP_PORT="${TS_AP_PORT:-8080}"
+    if [ -n "${TS_AP_PORT:-}" ]; then
+        AP_PORT="${TS_AP_PORT}"
+    else
+        AP_PORT="$(auto_detect_ap_port)"   # 空 = 本機非 AP 角色
+    fi
     PING_TGT="${TS_PING_TGT:-}"
 else
     clear
     echo "======================================================"
     if [ "${VERBOSE:-0}" = "1" ]; then
-        echo " 快速自辯報告 (Troubleshoot) v1.6  [mode=verbose]"
+        echo " 快速自辯報告 (Troubleshoot) v1.7  [mode=verbose]"
     else
-        echo " 快速自辯報告 (Troubleshoot) v1.6  [mode=簡潔，加 -m 看細項]"
+        echo " 快速自辯報告 (Troubleshoot) v1.7  [mode=簡潔，加 -m 看細項]"
     fi
     echo " 客訴「系統慢 / 連不進去」時執行，涵蓋 9 面向 + Appendix A (選配)"
     echo "======================================================"
-    # AP port: 自動掃常見 AP port (8080/8443/9090/7001/8081/9080/8001)，無則預設 8080
-    AP_PORT=$(ss -tnlp 2>/dev/null | awk 'NR>1{n=split($4,a,":"); p=a[n]; if(p~/^(8080|8443|9090|7001|8081|9080|8001)$/){print p; exit}}')
-    AP_PORT="${AP_PORT:-8080}"
+    if [ -n "${TS_AP_PORT:-}" ]; then
+        AP_PORT="${TS_AP_PORT}"
+    else
+        AP_PORT="$(auto_detect_ap_port)"   # 可能為空 (本機非 AP 角色)
+    fi
     PING_TGT=""
 fi
 if [ -z "${PING_TGT}" ]; then
@@ -98,7 +117,11 @@ if [ -z "${PING_TGT}" ]; then
 fi
 [ -z "${PING_TGT}" ] && PING_TGT="127.0.0.1"
 if [ "${TS_NONINTERACTIVE:-0}" != "1" ]; then
-    echo " AP 監聽 port (自動): ${AP_PORT}"
+    if [ -n "${AP_PORT}" ]; then
+        echo " AP 監聽 port (自動): ${AP_PORT}"
+    else
+        echo " AP 監聽 port (自動): 未偵測到 (本機可能非 AP 角色，該項將標 N/A)"
+    fi
     echo " Ping 目標 (自動):    ${PING_TGT}"
     echo " (如需指定： TS_AP_PORT=xxxx TS_PING_TGT=x.x.x.x bash mod_troubleshoot.sh)"
     echo " 開始檢查，約 30-60 秒..."
@@ -123,7 +146,7 @@ header() {
         echo " 操作者    : $(whoami)"
         echo " 產出時間  : $(date '+%Y-%m-%d %H:%M:%S')"
         echo " OS        : ${DISTRO}     Uptime: ${uptime_str}"
-        echo " AP port   : ${AP_PORT}    Ping 目標: ${PING_TGT}"
+        echo " AP port   : ${AP_PORT:-(未偵測 / 非 AP 角色)}    Ping 目標: ${PING_TGT}"
         echo "============================================================"
         echo
         echo "本報告 9 個面向："
@@ -161,6 +184,7 @@ s_block() {
     case "${result}" in
         WARN) color="${YEL}" ;;
         FAIL) color="${RED}" ;;
+        N/A)  color="" ;;   # 中性: 不適用 (e.g. 本機非 AP 角色)
     esac
     local body
     body=$(cat)
@@ -366,6 +390,22 @@ EOF
 # =============================================================================
 check_ap() {
     local pid="" comm="" cpu="" mem="" fd_count=0 result="PASS"
+
+    # v1.7: 若 AP_PORT 為空 (自動偵測沒抓到) → 本機非 AP 角色，走 N/A
+    if [ -z "${AP_PORT}" ]; then
+        d_run "3. AP - 未偵測到 AP port" bash -c "ss -tlnp 2>/dev/null | head -40; echo; echo '(已掃描 common AP port 白名單: ${AP_PORT_SCAN_LIST//|/ })'"
+        s_block "3/9" "AP" "N/A" <<EOF
+  檢查範圍   : 指定 AP port 有無 listener、該程序 CPU/記憶體/FD 使用、近 1h systemd journal
+  檢查指令   : ss -tlnp  (掃描 common AP port 白名單)
+  白名單     : ${AP_PORT_SCAN_LIST//|/ }
+  偵測結果   : 本機未偵測到任何常見 AP port 的 listener → 推定為非 AP 角色
+  判定依據   : N/A  (不適用；不列入 PASS/WARN/FAIL 統計)
+  對客訴影響 : 無 — 本機未在跑 AP 服務，客訴若為 AP 連線問題請查真正跑 AP 的主機
+  建議動作   : 若本機應為 AP 節點但未偵測到，檢查服務啟動狀態 (systemctl status <svc>) 或用 TS_AP_PORT=xxxx 明確指定；否則略過此項。
+EOF
+        return 0
+    fi
+
     pid=$(ss -tlnp 2>/dev/null | awk -v p=":${AP_PORT}" '$4 ~ p {print}' | grep -oP 'pid=\K[0-9]+' | head -1)
 
     local impact=""
@@ -881,16 +921,21 @@ appendix_a > /dev/null
 #   3. 印到 stdout: top summary → 「完整細項」分隔線 → cat SUMMARY (header+9 面向+appendix)
 #   4. 把 SUMMARY 檔重組為「top summary + 原內容」，讓離線看檔也是這個順序
 # ========================================================================
-pass=0; warn=0; fail=0
+pass=0; warn=0; fail=0; na=0
 for k in "${!RESULT[@]}"; do
     case "${RESULT[$k]}" in
         PASS) pass=$((pass+1)) ;;
         WARN) warn=$((warn+1)) ;;
         FAIL) fail=$((fail+1)) ;;
+        N/A)  na=$((na+1))    ;;
     esac
 done
+applicable=$((pass + warn + fail))   # N/A 不算在總數內
 
-# 客訴判讀語
+# 客訴判讀語 (v1.7: N/A 不計 fail/warn，但 verdict 會附註 N/A 數量)
+na_note=""
+[ "${na}" -gt 0 ] && na_note="  (另有 ${na} 項 N/A: 本機不適用)"
+
 if [ "${fail}" -gt 0 ]; then
     verdict_state="${RED:-}異常 — 系統有明確故障${RST:-}"
     relate_client="高度相關 (FAIL 即為客訴直接原因)"
@@ -898,8 +943,12 @@ elif [ "${warn}" -gt 0 ]; then
     verdict_state="${YEL:-}警告 — 有可觀察項${RST:-}"
     relate_client="可能相關 (WARN 項可能是累積/偶發原因)"
 else
-    verdict_state="健康 (9/9 PASS)"
-    relate_client="低度相關 (本機 9/9 通過，建議往上游/AP/DB 排查)"
+    verdict_state="健康 (${pass}/${applicable} PASS${na_note})"
+    if [ "${na}" -gt 0 ]; then
+        relate_client="低度相關 (本機非完整 AP 角色，建議往真正跑 AP 的主機排查)"
+    else
+        relate_client="低度相關 (本機 9/9 通過，建議往上游/AP/DB 排查)"
+    fi
 fi
 
 # 列出某狀態的所有項目
@@ -918,8 +967,8 @@ TOP_TMP="$(mktemp 2>/dev/null || echo /tmp/ts_top.$$)"
     echo
     echo "════════════════════════════════════════════════════════════════════"
     printf " 主機狀態: %b\n" "${verdict_state}"
-    printf " 統計:     PASS=%d  WARN=%d  FAIL=%d        主機: %s  時間: %s\n" \
-           "${pass}" "${warn}" "${fail}" "${HOST}" "$(date '+%Y-%m-%d %H:%M:%S')"
+    printf " 統計:     PASS=%d  WARN=%d  FAIL=%d  N/A=%d      主機: %s  時間: %s\n" \
+           "${pass}" "${warn}" "${fail}" "${na}" "${HOST}" "$(date '+%Y-%m-%d %H:%M:%S')"
     echo "────────────────────────────────────────────────────────────────────"
 
     if [ "${fail}" -gt 0 ]; then
@@ -933,7 +982,16 @@ TOP_TMP="$(mktemp 2>/dev/null || echo /tmp/ts_top.$$)"
         echo
     fi
     if [ "${fail}" -eq 0 ] && [ "${warn}" -eq 0 ]; then
-        echo " 所有 9 個面向皆 PASS — 本機無異常"
+        if [ "${na}" -gt 0 ]; then
+            printf " 適用項目 %d 項皆 PASS；另有 %d 項 N/A (不適用於本機角色)\n" "${applicable}" "${na}"
+            # 列出 N/A 項
+            for n in "1/9" "2/9" "3/9" "4/9" "5/9" "6/9" "7/9" "8/9" "9/9"; do
+                [ "${RESULT[$n]:-}" = "N/A" ] || continue
+                printf "   [%s] %-10s %s\n" "${n}" "${NAME[$n]:-}" "${IMPACT[$n]:-}"
+            done
+        else
+            echo " 所有 9 個面向皆 PASS — 本機無異常"
+        fi
         echo
     fi
 

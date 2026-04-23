@@ -1,11 +1,18 @@
 #!/bin/bash
 ###############################################################################
 # Script Name: LinuxMenu.sh
-# Version    : v1.6
-# Build Time : 2026-04-22 23:55:00   (git commit 時刻，由 release 人寫死)
+# Version    : v1.7
+# Build Time : 2026-04-23 00:15:00   (git commit 時刻，由 release 人寫死)
 # Deploy Time: <UNSET>                (部署時由 install.sh 或 scp hook sed 寫入)
 # Description: 金融業 Linux 維運工具 主選單 (Main Controller)
 # Style      : 雙線邊框、call_mod 派遣、CASLOG 環境變數
+# Scope v1.7: + AP port 智慧偵測 (無 hardcoded 8080 fallback)
+#               - 擴大白名單: 80/443/3000/5000/7001/8000/8001/8080/8081/8443/9080/9090
+#               - 掃到 listener → 用那個 port
+#               - 沒掃到 → AP_PORT 空 → check_ap 走 N/A (非 FAIL)
+#               - TS_AP_PORT 有設 → 尊重 SP 意圖 (SOP 指定的 port，沒 listener 就 FAIL)
+#             + s_block 新增 N/A state (中性，不列入 PASS/WARN/FAIL 統計)
+#             + top summary 新增 N/A 欄位顯示
 # Scope v1.6: + mod_troubleshoot.sh 預設簡潔模式
 #               - 預設 stdout 只印: 進度 + 總結字卡 + 「詳情看檔案」footer
 #               - 加 -m / -v / --full 才在 stdout 倒完整細項 (v1.5 的行為)
@@ -30,8 +37,8 @@
 ###############################################################################
 
 # 部署時刻 (由 install/deploy 腳本覆寫這一行；未部署時顯示 UNSET)
-export SMIT_VERSION="v1.6"
-export SMIT_BUILD_TIME="2026-04-22 23:55:00"
+export SMIT_VERSION="v1.7"
+export SMIT_BUILD_TIME="2026-04-23 00:15:00"
 export SMIT_DEPLOY_TIME="UNSET"   # DEPLOY_HOOK_LINE — deploy 腳本會 sed 這行
 
 # --- 環境變數 ---

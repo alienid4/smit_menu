@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# install.sh - Installer for Linux SMIT 維運工具 (v1.6)
+# install.sh - Installer for Linux SMIT 維運工具 (v1.7)
 #
 # 使用方式：
 #   1. 解壓 tarball 或直接把整個 scripts/ 目錄帶到目標機
@@ -103,7 +103,7 @@ echo "[install] 封裝完成: ${TAR}"
 cat <<EOF
 
 ╔══════════════════════════════════════════════════════════════╗
-║  金融業 Linux 維運工具  v1.5  已安裝完成   (Deploy: ${DEPLOY_TS})
+║  金融業 Linux 維運工具  v1.7  已安裝完成   (Deploy: ${DEPLOY_TS})
 ║
 ║  啟動方式:
 ║      bash ${SCRIPT_DIR}/LinuxMenu.sh
