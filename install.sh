@@ -1,15 +1,17 @@
 #!/bin/bash
 # =============================================================================
-# install.sh - Installer for Linux SMIT 維運工具 (v1.7)
+# install.sh - Installer for Linux SMIT 維運工具 (v1.8)
 #
 # 使用方式：
 #   1. 解壓 tarball 或直接把整個 scripts/ 目錄帶到目標機
 #   2. cd scripts && sudo bash install.sh
 #
 # 會做的事：
-#   - 建立 ${BASE}/{scripts,logs,reports,conf}  (預設 BASE=/CASLog/AI，可 env 覆蓋)
+#   - 建立 ${BASE}/{scripts,logs,reports,conf}  (v1.8 預設 BASE=/CASLog/AI/sos，可 env 覆蓋)
 #   - 把本目錄下的 *.sh 複製到 ${BASE}/scripts/
 #   - 將 LinuxMenu.sh 裡面的 SMIT_DEPLOY_TIME 寫成當下時刻 (v1.4 新增)
+#   - 若偵測到舊 /CASLog/AI/scripts/ 部署 (v1.7 以前)，會印提示並停下，
+#     要求 SP 先遷移 (避免誤刪合規資料)
 #   - chmod 750
 #   - 產出 /tmp/LinuxMenu_<timestamp>.tar.gz 方便散佈
 # =============================================================================
@@ -17,7 +19,41 @@ set -e
 DEPLOY_TS="$(date '+%Y-%m-%d %H:%M:%S')"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BASE="${BASE:-/CASLog/AI}"
+BASE="${BASE:-/CASLog/AI/sos}"
+
+# v1.8: 偵測舊路徑 (< v1.8) 存在時提醒遷移，不自動動手 (避免誤刪合規 HMAC key)
+OLD_BASE="/CASLog/AI"
+if [ "${BASE}" = "/CASLog/AI/sos" ] \
+   && [ -d "${OLD_BASE}/scripts" ] \
+   && [ ! -L "${OLD_BASE}/scripts" ] \
+   && [ "${BASE}" != "${OLD_BASE}" ]; then
+    cat <<OLDWARN
+╔════════════════════════════════════════════════════════════════════╗
+║  v1.8 路徑遷移偵測                                                  ║
+║  偵測到 ${OLD_BASE}/scripts 仍存在 (v1.7 以前的部署)。               ║
+║                                                                    ║
+║  v1.8 預設 BASE=${BASE}                                            ║
+║  若這是首次升級，請先手動遷移以保留合規資料 (HMAC key、audit log):  ║
+║                                                                    ║
+║    # 1. 解除舊 log 的 append-only (如有)                             ║
+║    chattr -ai ${OLD_BASE}/logs/*.log 2>/dev/null                   ║
+║    # 2. 搬移四個子目錄 (保留 HMAC key，合規鏈不斷)                   ║
+║    mkdir -p ${BASE}                                                 ║
+║    mv ${OLD_BASE}/{scripts,logs,reports,conf} ${BASE}/              ║
+║    # 3. 刪舊 cron (install.sh 會在新路徑重建)                        ║
+║    rm -f /etc/cron.d/linuxmenu-audit-seal                          ║
+║    # 4. 再跑 install.sh                                             ║
+║    bash install.sh                                                  ║
+║                                                                    ║
+║  若要強制直接部署 (忽略警告), 設 FORCE=1 bash install.sh            ║
+╚════════════════════════════════════════════════════════════════════╝
+OLDWARN
+    if [ "${FORCE:-0}" != "1" ]; then
+        echo "[install] 已停止。請先完成遷移或設 FORCE=1 跳過。" >&2
+        exit 2
+    fi
+    echo "[install] FORCE=1 設定，跳過遷移警告繼續部署。" >&2
+fi
 SCRIPT_DIR="${BASE}/scripts"
 LOG_DIR="${BASE}/logs"
 REPORT_DIR="${BASE}/reports"
@@ -44,11 +80,15 @@ for f in "${EXPECTED[@]}"; do
     echo "  → ${SCRIPT_DIR}/${f}"
 done
 
-# v1.4: 寫入 DEPLOY_TIME 到 LinuxMenu.sh (#-DEPLOY_HOOK_LINE)
+# v1.4+: 寫入 DEPLOY_TIME 到 LinuxMenu.sh
+#   1) 修改 export SMIT_DEPLOY_TIME 那行 (runtime banner 用)
+#   2) 修改 # Deploy Time: 那行 comment (head -6 LinuxMenu.sh 直接看得到)
 if [ -f "${SCRIPT_DIR}/LinuxMenu.sh" ]; then
     sed -i "s|^export SMIT_DEPLOY_TIME=.*# DEPLOY_HOOK_LINE|export SMIT_DEPLOY_TIME=\"${DEPLOY_TS}\"   # DEPLOY_HOOK_LINE|" \
         "${SCRIPT_DIR}/LinuxMenu.sh"
-    echo "[install] DEPLOY_TIME 已寫入 LinuxMenu.sh: ${DEPLOY_TS}"
+    sed -i "s|^# Deploy Time:.*$|# Deploy Time: ${DEPLOY_TS}   (由 install.sh 寫入)|" \
+        "${SCRIPT_DIR}/LinuxMenu.sh"
+    echo "[install] DEPLOY_TIME 已寫入 LinuxMenu.sh (env var + header comment): ${DEPLOY_TS}"
 fi
 
 # 設定檔範本（不覆蓋既有自訂，僅 sample 檔每次更新）
@@ -103,7 +143,7 @@ echo "[install] 封裝完成: ${TAR}"
 cat <<EOF
 
 ╔══════════════════════════════════════════════════════════════╗
-║  金融業 Linux 維運工具  v1.7  已安裝完成   (Deploy: ${DEPLOY_TS})
+║  金融業 Linux 維運工具  v1.8  已安裝完成   (Deploy: ${DEPLOY_TS})
 ║
 ║  啟動方式:
 ║      bash ${SCRIPT_DIR}/LinuxMenu.sh

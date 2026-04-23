@@ -4,7 +4,7 @@
 #   每天開盤前自動跑一次 troubleshoot，存為「當天的 baseline」，
 #   交易中出事時 diff 兩份 summary，秒級看出「今天跟平日不一樣在哪」。
 #
-# 設定 (透過 /CASLog/AI/conf/baseline.conf 或環境變數):
+# 設定 (透過 /CASLog/AI/sos/conf/baseline.conf 或環境變數):
 #   BL_AP_PORT=8080
 #   BL_PING_TGT=10.0.0.1         (空白則自動抓 gateway)
 #   BL_RETAIN_DAYS=30            (保留天數，超過自動清)

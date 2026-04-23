@@ -26,7 +26,7 @@ cd smit_menu
 sudo bash install.sh
 
 # 3. 啟動
-bash /CASLog/AI/scripts/LinuxMenu.sh
+bash /CASLog/AI/sos/scripts/LinuxMenu.sh
 ```
 
 自訂安裝根目錄：
@@ -70,7 +70,7 @@ ${BASE}/
 ## 客訴急救
 
 ```bash
-ssh -t root@<主機> 'bash /CASLog/AI/scripts/LinuxMenu.sh'
+ssh -t root@<主機> 'bash /CASLog/AI/sos/scripts/LinuxMenu.sh'
 
 # 非尖峰 / 客訴「慢」      →  選 11  (完整 9 面向，~30-60 秒)
 # 交易期間 / freeze        →  選 15  (秒級，<1 秒，不加重負擔)
@@ -102,7 +102,7 @@ sudo tee /etc/cron.d/linuxmenu-baseline >/dev/null <<'EOF'
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
-30 7 * * 1-5 root  bash /CASLog/AI/scripts/mod_baseline.sh --snapshot >> /CASLog/AI/logs/baseline.log 2>&1
+30 7 * * 1-5 root  bash /CASLog/AI/sos/scripts/mod_baseline.sh --snapshot >> /CASLog/AI/sos/logs/baseline.log 2>&1
 EOF
 ```
 
@@ -286,7 +286,7 @@ DISTRO_PRETTY        # "Rocky Linux 9.7 (Blue Onyx)"
 
 | 變數 | 預設 |
 |---|---|
-| `CASLOG_BASE` | `/CASLog/AI` |
+| `CASLOG_BASE` | `/CASLog/AI/sos` (v1.8 起) |
 | `CASLOG_SCRIPT` | `${CASLOG_BASE}/scripts` |
 | `CASLOG_LOG` | `${CASLOG_BASE}/logs` |
 | `CASLOG_REPORT` | `${CASLOG_BASE}/reports` |
@@ -330,7 +330,12 @@ sudo apt-get install -y sysstat lsof ethtool netcat-openbsd chrony iputils-arpin
 | v1.0 | 2026-04-20 | 首版；16 模組；troubleshoot 9 面向 + DB 6 種 + triage + baseline + tooling |
 | v1.1 | 2026-04-20 | 新增選項 17 審計封存與驗證（T0 合規：append-only + HMAC + 每日 cron seal） |
 | v1.2 | 2026-04-22 | 預設根路徑 `/TWLog/AI` → `/CASLog/AI`；環境變數 `TWLOG_*` → `CASLOG_*`（breaking change，需遷移舊部署） |
-| **v1.3** | **2026-04-22** | **`run_impact_cmd` 升級雙重確認（CONFIRM + 打主機名 + 10 秒 timeout）**；**distro 偵測改用 `/etc/os-release`**，依版本自動切 `PKG` (yum/dnf) 與 `FAILLOCK` (pam_tally2/faillock)；主選單顯示 `DISTRO_PRETTY`、`PKG`、`FW`、`FAILLOCK` |
+| v1.3 | 2026-04-22 | `run_impact_cmd` 升級雙重確認（CONFIRM + 打主機名 + 10 秒 timeout）；distro 偵測改用 `/etc/os-release`，依版本自動切 `PKG`/`FAILLOCK`；主選單顯示 distro 資訊 |
+| v1.4 | 2026-04-22 | prompt 簡化：能自動判斷就不問 (`mod_troubleshoot` 自動抓 gateway；`mod_file` 3 秒 timeout)；檔頭內嵌 Build/Deploy 時刻 (`head -6 LinuxMenu.sh` 可見版本) |
+| v1.5 | 2026-04-22 | `mod_troubleshoot.sh` 輸出重構 — 先印總結字卡 (主機狀態/統計/FAIL+WARN 逐項+動作) 再印細項，5 秒內可判讀客訴 |
+| v1.6 | 2026-04-22 | `mod_troubleshoot.sh` 預設簡潔模式 (只印總結 + 報告路徑)，加 `-m` / `-v` / `--full` 才印完整細項；報告檔永遠全版 |
+| v1.7 | 2026-04-23 | AP port 智慧偵測 — 無 hardcoded 8080 fallback；白名單擴大 (80/443/3000/5000/7001/8000/8001/8080/8081/8443/9080/9090)；偵測不到走 `N/A` (不 FAIL) |
+| **v1.8** | **2026-04-23** | **預設根路徑 `/CASLog/AI` → `/CASLog/AI/sos`**（`CASLOG_BASE` 可覆蓋）；`install.sh` 偵測舊路徑會提示遷移步驟不自動動手（保護 HMAC key 與 append-only log） |
 
 ## License
 

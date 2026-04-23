@@ -99,9 +99,9 @@ else
     clear
     echo "======================================================"
     if [ "${VERBOSE:-0}" = "1" ]; then
-        echo " 快速自辯報告 (Troubleshoot) v1.7  [mode=verbose]"
+        echo " 快速自辯報告 (Troubleshoot) v1.8  [mode=verbose]"
     else
-        echo " 快速自辯報告 (Troubleshoot) v1.7  [mode=簡潔，加 -m 看細項]"
+        echo " 快速自辯報告 (Troubleshoot) v1.8  [mode=簡潔，加 -m 看細項]"
     fi
     echo " 客訴「系統慢 / 連不進去」時執行，涵蓋 9 面向 + Appendix A (選配)"
     echo "======================================================"

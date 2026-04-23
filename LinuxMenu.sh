@@ -1,11 +1,15 @@
 #!/bin/bash
 ###############################################################################
 # Script Name: LinuxMenu.sh
-# Version    : v1.7
-# Build Time : 2026-04-23 00:15:00   (git commit 時刻，由 release 人寫死)
+# Version    : v1.8
+# Build Time : 2026-04-23 08:20:00   (git commit 時刻，由 release 人寫死)
 # Deploy Time: <UNSET>                (部署時由 install.sh 或 scp hook sed 寫入)
 # Description: 金融業 Linux 維運工具 主選單 (Main Controller)
 # Style      : 雙線邊框、call_mod 派遣、CASLOG 環境變數
+# Scope v1.8: + 預設根路徑 /CASLog/AI → /CASLog/AI/sos (CASLOG_BASE env 覆蓋)
+#               目的: 預留 /CASLog/AI 給其他工具集並行 (sos=Support / Observability System)
+#               影響: scripts/logs/reports/conf 全部往 /CASLog/AI/sos/ 下面搬
+#               舊部署遷移: mv 舊 4 個子目錄到 /CASLog/AI/sos/ 下，改 cron 路徑
 # Scope v1.7: + AP port 智慧偵測 (無 hardcoded 8080 fallback)
 #               - 擴大白名單: 80/443/3000/5000/7001/8000/8001/8080/8081/8443/9080/9090
 #               - 掃到 listener → 用那個 port
@@ -32,18 +36,19 @@
 # Scope v1.3: + run_impact_cmd 雙重確認 (CONFIRM + 打主機名, 10 秒 timeout)
 #             + distro 細版本偵測 (/etc/os-release, RHEL 7/8/9, Ubuntu, Debian, Rocky, Alma...)
 #             + 依版本自動切 PKG (yum/dnf) 與 FAILLOCK (pam_tally2/faillock)
+# Scope v1.8: 預設根路徑 /CASLog/AI → /CASLog/AI/sos (預留 /CASLog/AI 給其他工具集)
 # Scope v1.2: 預設根路徑 /CASLog/AI (可由 CASLOG_BASE env 覆蓋)
 # Scope v1.0: 三色 wrapper、audit log、17 個子模組、T0 合規、baseline、triage、tooling
 ###############################################################################
 
 # 部署時刻 (由 install/deploy 腳本覆寫這一行；未部署時顯示 UNSET)
-export SMIT_VERSION="v1.7"
-export SMIT_BUILD_TIME="2026-04-23 00:15:00"
+export SMIT_VERSION="v1.8"
+export SMIT_BUILD_TIME="2026-04-23 08:20:00"
 export SMIT_DEPLOY_TIME="UNSET"   # DEPLOY_HOOK_LINE — deploy 腳本會 sed 這行
 
 # --- 環境變數 ---
-# CASLOG_BASE 可透過環境變數覆蓋，預設 /CASLog/AI
-export CASLOG_BASE="${CASLOG_BASE:-/CASLog/AI}"
+# CASLOG_BASE 可透過環境變數覆蓋，預設 /CASLog/AI/sos (v1.8)
+export CASLOG_BASE="${CASLOG_BASE:-/CASLog/AI/sos}"
 export CASLOG_SCRIPT="${CASLOG_BASE}/scripts"
 export CASLOG_LOG="${CASLOG_BASE}/logs"
 export CASLOG_REPORT="${CASLOG_BASE}/reports"
